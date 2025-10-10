@@ -3,6 +3,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { TaxonomiesPrismaRepository } from '../persistence/prisma/taxonomies.prisma.repository';
 import { CreateAllergyDto, UpdateAllergyDto, PageQueryDto, CreateConditionDto, UpdateConditionDto, CreateCuisineDto, UpdateCuisineDto } from './dto/taxonomies.dto';
 import { Prisma } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 @UseGuards(JwtAuthGuard)
 @Controller('taxonomies')
@@ -79,7 +80,7 @@ export class TaxonomiesController {
   }
 
   private handlePrismaErrors(e: any): never {
-    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+    if (e instanceof PrismaClientKnownRequestError) {
       if (e.code === 'P2002') throw new BadRequestException('Registro duplicado (campo único).');
       if (e.code === 'P2003') throw new BadRequestException('Violación de clave foránea.');
       if (e.code === 'P2025') throw new BadRequestException('Registro no encontrado.');
