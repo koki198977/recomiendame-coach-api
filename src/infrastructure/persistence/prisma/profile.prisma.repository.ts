@@ -1,7 +1,10 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { PROFILE_REPO, ProfileRepoPort } from '../../../core/application/profile/ports/out.profile-repo.port';
-import { Sex, ActivityLevel } from '@prisma/client';
+
+
+type Sex = 'MALE' | 'FEMALE' | 'OTHER' | 'UNSPECIFIED';
+type ActivityLevel = 'SEDENTARY' | 'LIGHT' | 'MODERATE' | 'ACTIVE' | 'VERY_ACTIVE';
 
 type UpdatePatch = {
   sex?: string;                 // "MALE" | "FEMALE" | "OTHER" | "UNSPECIFIED"
