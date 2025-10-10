@@ -2,10 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CHECKIN_REPOSITORY, CheckinRepositoryPort } from '../../../core/application/checkins/ports/out.checkin-repository.port';
 import { CheckinEntity } from '../../../core/domain/checkins/entities';
-import { Prisma } from '@prisma/client';
+import type { Decimal } from '@prisma/client/runtime/library';
 
-const dec = (v: Prisma.Decimal | null | undefined): number | null =>
-  v == null ? null : v.toNumber();
+
+const dec = (v: Decimal | number | null | undefined): number | null => {
+  if (v == null) return null;
+  return typeof v === 'number' ? v : Number(v.toString());
+};
 
 @Injectable()
 export class CheckinPrismaRepository implements CheckinRepositoryPort {
