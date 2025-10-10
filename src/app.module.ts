@@ -11,11 +11,12 @@ import { MeModule } from './modules/me.module';
 import { MeFeedModule } from './modules/me-feed.module';
 import { PostsModule } from './modules/posts.module';
 import { ProfileModule } from './modules/profile.module';
+import { TaxonomiesModule } from './modules/taxonomies.module';
 
 @Module({
   imports: [
     PrismaModule, PlansModule, UsersModule, AuthModule, CheckinsModule, 
-    MeModule, MeFeedModule, PostsModule, ProfileModule
+    MeModule, MeFeedModule, PostsModule, ProfileModule, TaxonomiesModule
   ],
   controllers: [AppController],
   providers: [AppService],
