@@ -7,6 +7,8 @@ services:
       POSTGRES_USER: nest
       POSTGRES_PASSWORD: nest
       POSTGRES_DB: coach
+      NODE_ENV: development
+      DATABASE_URL: "postgresql://nest:nest@db:5432/coach?schema=public"
     ports:
       - '5532:5432'
     volumes:
