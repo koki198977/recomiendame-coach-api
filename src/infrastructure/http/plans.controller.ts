@@ -19,10 +19,8 @@ export class PlansController {
   }
 
   @Get()
-  async byWeek(
-    @Query('week') isoWeek: string,
-    @Query('userId') userId: string,
-  ) {
+  async byWeek(@Query('week') isoWeek: string, @Req() req: any) {
+    const userId = req.user.userId ?? req.user.sub; // 👈 del token
     return this.getByWeek.execute(userId, isoWeek);
   }
 
