@@ -15,8 +15,15 @@ export class CheckinsController {
   ) {}
 
   @Post()
-  createOrUpdate(@Body() dto: UpsertCheckinDto, @Req() req: any) {
-    return this.upsertUC.execute(req.user.userId, dto);
+  async upsertCheckin(@Req() req: any, @Body() body: any) {
+    const userId = req.user.userId;
+    return this.upsertUC.execute(userId, {
+      date: body.date,                // 'YYYY-MM-DD'
+      weightKg: body.weightKg ?? null,
+      adherencePct: body.adherencePct ?? null,
+      hungerLvl: body.hungerLvl ?? null,
+      notes: body.notes ?? null,
+    });
   }
 
   @Get()
