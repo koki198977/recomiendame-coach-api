@@ -16,114 +16,121 @@ export class GamificationPrismaRepository implements GamificationRepoPort {
     const day = this.stripTimeUTC(date);
 
     return this.prisma.$transaction(async (tx) => {
-      // 1) racha actual
-      const existing = await tx.streak.findUnique({ where: { userId } });
+        // 1) racha actual
+        const existing = await tx.streak.findUnique({ where: { userId } });
 
-      // Verificamos si hubo checkin ayer
-      const yesterday = new Date(day); yesterday.setUTCDate(day.getUTCDate() - 1);
-
-      // ¿Ya había checkin hoy? (evitar múltiple puntuación si tu flujo lo permite)
-      const already = await tx.checkin.findFirst({ where: { userId, date: day } });
-      const isNewToday = !already; // tu flujo debería impedir duplicar, pero por si acaso
-
-      let newDays = 1;
-      if (existing?.updatedAt) {
+        let newDays = 1;
+        if (existing?.updatedAt) {
         const lastDay = this.stripTimeUTC(existing.updatedAt);
         const diff = Math.round((day.getTime() - lastDay.getTime()) / 86400000);
-        if (diff === 0) {
-          // ya contada la racha hoy -> no sumes de nuevo
-          newDays = existing.days;
-        } else if (diff === 1) {
-          newDays = existing.days + 1;
-        } else {
-          newDays = 1;
+        if (diff === 0) newDays = existing.days;        // ya contamos hoy
+        else if (diff === 1) newDays = existing.days + 1;
+        else newDays = 1;
         }
-      }
 
-      // 2) Upsert de racha
-      const streak = await tx.streak.upsert({
+        // 2) Upsert de racha (esto moverá updatedAt)
+        const streak = await tx.streak.upsert({
         where: { userId },
         update: { days: newDays },
         create: { userId, days: 1 },
-      });
+        });
 
-      // 3) Puntos (regla simple)
-      let pointsAdded = 0;
-      const writes: Promise<any>[] = [];
+        // 3) Puntos y logros con “gates” robustos
+        let pointsAdded = 0;
+        const unlockedCodes: string[] = [];
+        const writes: Promise<any>[] = [];
 
-      if (isNewToday) {
-        // primer checkin de la vida?
-        const firstEver = await tx.checkin.findFirst({ where: { userId } });
-        if (!firstEver) {
-          pointsAdded += 50;
-          writes.push(tx.pointsLedger.create({ data: { userId, delta: 50, reason: 'first_checkin' } }));
+        // 3.1 Daily: gatea por ledger para NO duplicar
+        const dailyAlready = await tx.pointsLedger.findFirst({
+        where: {
+            userId,
+            reason: 'daily_checkin',
+            // createdAt del día UTC (banda ancha: >= day y < day+1)
+            createdAt: { gte: day, lt: new Date(day.getTime() + 86400000) },
+        },
+        select: { id: true },
+        });
+
+        if (!dailyAlready) {
+        pointsAdded += 10;
+        writes.push(tx.pointsLedger.create({ data: { userId, delta: 10, reason: 'daily_checkin', meta: { day: day.toISOString().slice(0,10) } } }));
         }
 
-        // puntos por checkin diario
-        pointsAdded += 10;
-        writes.push(tx.pointsLedger.create({ data: { userId, delta: 10, reason: 'daily_checkin' } }));
+        // Helpers para resolver logro por code
+        const getAchIdByCode = async (code: string) => {
+        const ach = await tx.achievement.findUnique({ where: { code } });
+        return ach?.id ?? null;
+        };
+        const hasAchievement = async (achId: string) => {
+        const ua = await tx.userAchievement.findUnique({ where: { userId_achievementId: { userId, achievementId: achId } } });
+        return !!ua;
+        };
 
-        // bonus por racha (7 y 30)
-        const unlocked: string[] = [];
+        // 3.2 FIRST_CHECKIN (usa logro como fuente de verdad, no buscar “primer checkin”)
+        {
+        const achId = await getAchIdByCode(ACHIEVEMENTS.FIRST_CHECKIN);
+        if (achId && !(await hasAchievement(achId))) {
+            unlockedCodes.push(ACHIEVEMENTS.FIRST_CHECKIN);
+            writes.push(tx.userAchievement.create({ data: { userId, achievementId: achId } }));
+            // bonus por primer check-in (si quieres)
+            pointsAdded += 50;
+            writes.push(tx.pointsLedger.create({ data: { userId, delta: 50, reason: 'first_checkin' } }));
+        }
+        }
+
+        // 3.3 STREAK_7 / STREAK_30
         if (streak.days >= 7) {
-          const has = await tx.userAchievement.findUnique({ where: { userId_achievementId: { userId, achievementId: ACHIEVEMENTS.STREAK_7 } } });
-          if (!has) {
-            unlocked.push(ACHIEVEMENTS.STREAK_7);
+        const achId = await getAchIdByCode(ACHIEVEMENTS.STREAK_7);
+        if (achId && !(await hasAchievement(achId))) {
+            unlockedCodes.push(ACHIEVEMENTS.STREAK_7);
+            writes.push(tx.userAchievement.create({ data: { userId, achievementId: achId } }));
             pointsAdded += 70;
-            writes.push(
-              tx.userAchievement.create({ data: { userId, achievementId: ACHIEVEMENTS.STREAK_7 } }),
-              tx.pointsLedger.create({ data: { userId, delta: 70, reason: 'streak_7' } })
-            );
-          }
+            writes.push(tx.pointsLedger.create({ data: { userId, delta: 70, reason: 'streak_7', meta: { days: streak.days } } }));
+        }
         }
         if (streak.days >= 30) {
-          const has = await tx.userAchievement.findUnique({ where: { userId_achievementId: { userId, achievementId: ACHIEVEMENTS.STREAK_30 } } });
-          if (!has) {
-            unlocked.push(ACHIEVEMENTS.STREAK_30);
+        const achId = await getAchIdByCode(ACHIEVEMENTS.STREAK_30);
+        if (achId && !(await hasAchievement(achId))) {
+            unlockedCodes.push(ACHIEVEMENTS.STREAK_30);
+            writes.push(tx.userAchievement.create({ data: { userId, achievementId: achId } }));
             pointsAdded += 150;
-            writes.push(
-              tx.userAchievement.create({ data: { userId, achievementId: ACHIEVEMENTS.STREAK_30 } }),
-              tx.pointsLedger.create({ data: { userId, delta: 150, reason: 'streak_30' } })
-            );
-          }
+            writes.push(tx.pointsLedger.create({ data: { userId, delta: 150, reason: 'streak_30', meta: { days: streak.days } } }));
+        }
         }
 
-        // primer_checkin achievement
-        const hasFirst = await tx.userAchievement.findUnique({ where: { userId_achievementId: { userId, achievementId: ACHIEVEMENTS.FIRST_CHECKIN } } });
-        if (!hasFirst) {
-          writes.push(tx.userAchievement.create({ data: { userId, achievementId: ACHIEVEMENTS.FIRST_CHECKIN } }));
-        }
-      }
+        if (writes.length) await Promise.all(writes);
 
-      if (writes.length) await Promise.all(writes);
-
-      // 4) total points y achievements para respuesta
-      const [agg, userAch] = await Promise.all([
+        // 4) Total points + achievements (solo para respuesta)
+        const [agg] = await Promise.all([
         tx.pointsLedger.aggregate({ _sum: { delta: true }, where: { userId } }),
-        tx.userAchievement.findMany({ where: { userId }, select: { achievementId: true } }),
-      ]);
+        ]);
 
-      const totalPoints = agg._sum.delta ?? 0;
+        const totalPoints = agg._sum.delta ?? 0;
 
-      return {
+        return {
         streakDays: streak.days,
         pointsAdded,
-        unlocked: userAch.map(x => x.achievementId),
-      };
+        unlocked: unlockedCodes, // ← SOLO los recién desbloqueados y en CÓDIGOS
+        totalPoints,             // útil para que el front ya actualice marcador
+        };
     });
-  }
+    }
+
 
   async getMyGamification(userId: string) {
     const [streak, agg, ua] = await Promise.all([
       this.prisma.streak.findUnique({ where: { userId } }),
       this.prisma.pointsLedger.aggregate({ _sum: { delta: true }, where: { userId } }),
-      this.prisma.userAchievement.findMany({ where: { userId }, select: { achievementId: true } }),
+      this.prisma.userAchievement.findMany({ 
+        where: { userId }, 
+        select: { achievement: { select: { code: true } } }
+      }),
     ]);
 
     return {
       streakDays: streak?.days ?? 0,
       totalPoints: agg._sum.delta ?? 0,
-      achievements: ua.map(x => x.achievementId),
+      achievements: ua.map(x => x.achievement.code),
     };
   }
 
