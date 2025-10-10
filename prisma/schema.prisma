@@ -1,0 +1,489 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/**
+ * ===== Enums =====
+ */
+enum Visibility {
+  PRIVATE
+  FOLLOWERS
+  PUBLIC
+}
+
+enum Sex {
+  MALE
+  FEMALE
+  OTHER
+  UNSPECIFIED
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  VERY_ACTIVE
+}
+
+enum GoalType {
+  LOSS
+  GAIN
+  MAINTAIN
+}
+
+enum MealSlot {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+enum CuisinePrefKind {
+  LIKE
+  DISLIKE
+}
+
+/**
+ * ===== Modelos base de usuarios/social =====
+ */
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile       UserProfile?
+  posts         Post[]
+  likes         PostLike[]
+  comments      PostComment[]
+  followers     Follow[]       @relation("followers")
+  following     Follow[]       @relation("following")
+  points        PointsLedger[]
+  streak        Streak?
+  devices       DeviceToken[]
+  notifications Notification[]
+
+  // 👇 oposites para relaciones con Challenge
+  ownedChallenges       Challenge[]             @relation("ChallengeOwner")
+  challengeMemberships  ChallengeMembership[]
+  PrivacySettings       PrivacySettings[]
+  UserCondition         UserCondition[]
+  UserAllergy           UserAllergy[]
+  UserCuisinePreference UserCuisinePreference[]
+  Goal                  Goal[]
+  Plan                  Plan[]
+  Checkin               Checkin[]
+  HydrationLog          HydrationLog[]
+  SleepLog              SleepLog[]
+  ActivityLog           ActivityLog[]
+  UserAchievement       UserAchievement[]
+  ChallengeProgress     ChallengeProgress[]
+
+  passwordResets PasswordReset[]
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("followers", fields: [followerId], references: [id])
+  following   User     @relation("following", fields: [followingId], references: [id])
+
+  @@id([followerId, followingId])
+}
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  url       String
+  width     Int?
+  height    Int?
+  createdAt DateTime @default(now())
+  post      Post?
+}
+
+model Post {
+  id          String        @id @default(cuid())
+  authorId    String
+  author      User          @relation(fields: [authorId], references: [id])
+  challengeId String?
+  challenge   Challenge?    @relation(fields: [challengeId], references: [id])
+  caption     String?
+  mediaId     String?       @unique
+  media       MediaAsset?   @relation(fields: [mediaId], references: [id])
+  createdAt   DateTime      @default(now())
+  visibility  Visibility    @default(FOLLOWERS)
+  likes       PostLike[]
+  comments    PostComment[]
+  shareToken  ShareToken?
+
+  @@index([authorId, createdAt])
+}
+
+model PostLike {
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+}
+
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id])
+}
+
+model ShareToken {
+  id        String   @id @default(cuid())
+  postId    String   @unique
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+}
+
+model PrivacySettings {
+  userId      String        @id
+  user        User          @relation(fields: [userId], references: [id])
+  profile     Visibility    @default(FOLLOWERS)
+  posts       Visibility    @default(FOLLOWERS)
+  stats       Visibility    @default(FOLLOWERS)
+  UserProfile UserProfile[]
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+}
+
+/**
+ * ===== Perfil, condiciones, preferencias =====
+ */
+model UserProfile {
+  userId          String         @id
+  user            User           @relation(fields: [userId], references: [id])
+  sex             Sex?
+  birthDate       DateTime?
+  heightCm        Int?
+  weightKg        Decimal?       @db.Decimal(5, 2)
+  activityLevel   ActivityLevel?
+  country         String?
+  budgetLevel     Int?
+  cookTimePerMeal Int?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  conditions            UserCondition[]
+  allergies             UserAllergy[]
+  cuisinePrefs          UserCuisinePreference[]
+  privacy               PrivacySettings?        @relation(fields: [privacySettingsUserId], references: [userId])
+  privacySettingsUserId String?
+}
+
+model HealthCondition {
+  id    Int             @id @default(autoincrement())
+  code  String          @unique
+  label String
+  users UserCondition[]
+}
+
+model UserCondition {
+  userId            String
+  conditionId       Int
+  createdAt         DateTime        @default(now())
+  user              User            @relation(fields: [userId], references: [id])
+  condition         HealthCondition @relation(fields: [conditionId], references: [id])
+  UserProfile       UserProfile?    @relation(fields: [userProfileUserId], references: [userId])
+  userProfileUserId String?
+
+  @@id([userId, conditionId])
+}
+
+model Allergy {
+  id    Int           @id @default(autoincrement())
+  name  String        @unique
+  users UserAllergy[]
+}
+
+model UserAllergy {
+  userId            String
+  allergyId         Int
+  createdAt         DateTime     @default(now())
+  user              User         @relation(fields: [userId], references: [id])
+  allergy           Allergy      @relation(fields: [allergyId], references: [id])
+  UserProfile       UserProfile? @relation(fields: [userProfileUserId], references: [userId])
+  userProfileUserId String?
+
+  @@id([userId, allergyId])
+}
+
+model Cuisine {
+  id    Int                     @id @default(autoincrement())
+  name  String                  @unique
+  prefs UserCuisinePreference[]
+}
+
+model UserCuisinePreference {
+  id        String          @id @default(cuid())
+  userId    String
+  cuisineId Int
+  kind      CuisinePrefKind
+  createdAt DateTime        @default(now())
+
+  user              User         @relation(fields: [userId], references: [id])
+  cuisine           Cuisine      @relation(fields: [cuisineId], references: [id])
+  UserProfile       UserProfile? @relation(fields: [userProfileUserId], references: [userId])
+  userProfileUserId String?
+
+  @@unique([userId, cuisineId, kind])
+}
+
+/**
+ * ===== Objetivos y planificación =====
+ */
+model Goal {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  goalType       GoalType
+  targetWeightKg Decimal   @db.Decimal(5, 2)
+  weeklyPaceKg   Decimal?  @db.Decimal(4, 2)
+  startDate      DateTime  @default(now())
+  endDate        DateTime?
+  createdAt      DateTime  @default(now())
+  plans          Plan[]
+
+  @@index([userId, goalType])
+}
+
+model Plan {
+  id         String        @id @default(cuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id])
+  goalId     String?
+  goal       Goal?         @relation(fields: [goalId], references: [id])
+  weekStart  DateTime
+  kcalTarget Int
+  protein_g  Int
+  carbs_g    Int
+  fat_g      Int
+  notes      String?
+  createdAt  DateTime      @default(now())
+  days       PlanDay[]
+  groceries  GroceryItem[]
+
+  @@unique([userId, weekStart])
+}
+
+model PlanDay {
+  id       String @id @default(cuid())
+  planId   String
+  plan     Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  dayIndex Int
+  meals    Meal[]
+
+  @@unique([planId, dayIndex])
+}
+
+model Meal {
+  id          String           @id @default(cuid())
+  planDayId   String
+  planDay     PlanDay          @relation(fields: [planDayId], references: [id], onDelete: Cascade)
+  slot        MealSlot
+  title       String
+  prepMinutes Int?
+  kcal        Int
+  protein_g   Int
+  carbs_g     Int
+  fat_g       Int
+  tags        String[]
+  ingredients MealIngredient[]
+
+  @@unique([planDayId, slot])
+}
+
+model MealIngredient {
+  id       String   @id @default(cuid())
+  mealId   String
+  meal     Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  name     String
+  qty      Decimal? @db.Decimal(10, 3)
+  unit     String?
+  category String?
+}
+
+model GroceryItem {
+  id       String   @id @default(cuid())
+  planId   String
+  plan     Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  name     String
+  qty      Decimal? @db.Decimal(10, 3)
+  unit     String?
+  category String?
+}
+
+/**
+ * ===== Seguimiento y bienestar =====
+ */
+model Checkin {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  date         DateTime
+  weightKg     Decimal? @db.Decimal(5, 2)
+  adherencePct Int?
+  hungerLvl    Int?
+  notes        String?
+
+  @@unique([userId, date])
+}
+
+model HydrationLog {
+  id     String   @id @default(cuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id])
+  date   DateTime
+  ml     Int
+
+  @@index([userId, date])
+}
+
+model SleepLog {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id])
+  date    DateTime
+  hours   Decimal  @db.Decimal(4, 2)
+  quality Int?
+
+  @@index([userId, date])
+}
+
+model ActivityLog {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id])
+  date    DateTime
+  steps   Int?
+  minutes Int?
+  kcal    Int?
+
+  @@index([userId, date])
+}
+
+/**
+ * ===== Gamificación y desafíos =====
+ */
+model Achievement {
+  id     String            @id @default(cuid())
+  code   String            @unique
+  title  String
+  desc   String?
+  points Int               @default(0)
+  users  UserAchievement[]
+}
+
+model UserAchievement {
+  userId        String
+  achievementId String
+  unlockedAt    DateTime    @default(now())
+  user          User        @relation(fields: [userId], references: [id])
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+
+  @@id([userId, achievementId])
+}
+
+model PointsLedger {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  delta     Int
+  reason    String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Streak {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id])
+  days      Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model Challenge {
+  id          String                @id @default(cuid())
+  ownerId     String?
+  owner       User?                 @relation("ChallengeOwner", fields: [ownerId], references: [id])
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  rule        String
+  visibility  Visibility            @default(PUBLIC)
+  members     ChallengeMembership[]
+  progress    ChallengeProgress[]
+  posts       Post[]
+}
+
+model ChallengeMembership {
+  userId      String
+  challengeId String
+  joinedAt    DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id])
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+
+  @@id([userId, challengeId])
+}
+
+model ChallengeProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  challengeId String
+  date        DateTime
+  value       Decimal?  @db.Decimal(8, 2)
+  meta        Json?
+  user        User      @relation(fields: [userId], references: [id])
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+
+  @@unique([userId, challengeId, date])
+}
+
+model PasswordReset {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  tokenHash   String    @unique
+  requestedAt DateTime  @default(now())
+  expiresAt   DateTime
+  usedAt      DateTime?
+
+  @@index([userId, expiresAt])
+}
