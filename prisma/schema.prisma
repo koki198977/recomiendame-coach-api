@@ -59,33 +59,47 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile       UserProfile?
-  posts         Post[]
-  likes         PostLike[]
-  comments      PostComment[]
-  followers     Follow[]       @relation("followers")
-  following     Follow[]       @relation("following")
+  // Perfil (1:1)
+  profile UserProfile?
+
+  // Social / posts
+  posts     Post[]
+  likes     PostLike[]
+  comments  PostComment[]
+  followers Follow[]      @relation("followers")
+  following Follow[]      @relation("following")
+
+  // Gamificación / notificaciones / dispositivos
   points        PointsLedger[]
   streak        Streak?
-  devices       DeviceToken[]
   notifications Notification[]
+  devices       DeviceToken[]
 
-  // 👇 oposites para relaciones con Challenge
-  ownedChallenges       Challenge[]             @relation("ChallengeOwner")
-  challengeMemberships  ChallengeMembership[]
-  PrivacySettings       PrivacySettings[]
-  UserCondition         UserCondition[]
-  UserAllergy           UserAllergy[]
-  UserCuisinePreference UserCuisinePreference[]
-  Goal                  Goal[]
-  Plan                  Plan[]
-  Checkin               Checkin[]
-  HydrationLog          HydrationLog[]
-  SleepLog              SleepLog[]
-  ActivityLog           ActivityLog[]
-  UserAchievement       UserAchievement[]
-  ChallengeProgress     ChallengeProgress[]
+  // Retos (Challenges)
+  ownedChallenges      Challenge[]           @relation("ChallengeOwner")
+  challengeMemberships ChallengeMembership[]
+  challengeProgress    ChallengeProgress[]
 
+  // Privacidad (1:1)
+  privacy PrivacySettings?
+
+  // Preferencias (pivots -> User)
+  allergies    UserAllergy[]
+  conditions   UserCondition[]
+  cuisinePrefs UserCuisinePreference[]
+
+  // Objetivos / planes / tracking
+  goals         Goal[]
+  plans         Plan[]
+  checkins      Checkin[]
+  hydrationLogs HydrationLog[]
+  sleepLogs     SleepLog[]
+  activityLogs  ActivityLog[]
+
+  // Logros del usuario
+  achievements UserAchievement[]
+
+  // Reset de contraseña
   passwordResets PasswordReset[]
 }
 
@@ -186,23 +200,19 @@ model DeviceToken {
  * ===== Perfil, condiciones, preferencias =====
  */
 model UserProfile {
-  userId          String         @id
-  user            User           @relation(fields: [userId], references: [id])
-  sex             Sex?
-  birthDate       DateTime?
-  heightCm        Int?
-  weightKg        Decimal?       @db.Decimal(5, 2)
-  activityLevel   ActivityLevel?
-  country         String?
-  budgetLevel     Int?
-  cookTimePerMeal Int?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  conditions            UserCondition[]
-  allergies             UserAllergy[]
-  cuisinePrefs          UserCuisinePreference[]
-  privacy               PrivacySettings?        @relation(fields: [privacySettingsUserId], references: [userId])
+  userId                String           @id
+  user                  User             @relation(fields: [userId], references: [id])
+  sex                   Sex?
+  birthDate             DateTime?
+  heightCm              Int?
+  weightKg              Decimal?         @db.Decimal(5, 2)
+  activityLevel         ActivityLevel?
+  country               String?
+  budgetLevel           Int?
+  cookTimePerMeal       Int?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  PrivacySettings       PrivacySettings? @relation(fields: [privacySettingsUserId], references: [userId])
   privacySettingsUserId String?
 }
 
@@ -214,15 +224,16 @@ model HealthCondition {
 }
 
 model UserCondition {
-  userId            String
-  conditionId       Int
-  createdAt         DateTime        @default(now())
-  user              User            @relation(fields: [userId], references: [id])
-  condition         HealthCondition @relation(fields: [conditionId], references: [id])
-  UserProfile       UserProfile?    @relation(fields: [userProfileUserId], references: [userId])
-  userProfileUserId String?
+  userId      String
+  conditionId Int
+  createdAt   DateTime @default(now())
+
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  condition HealthCondition @relation(fields: [conditionId], references: [id], onDelete: Cascade)
 
   @@id([userId, conditionId])
+  @@index([userId])
+  @@index([conditionId])
 }
 
 model Allergy {
@@ -232,15 +243,16 @@ model Allergy {
 }
 
 model UserAllergy {
-  userId            String
-  allergyId         Int
-  createdAt         DateTime     @default(now())
-  user              User         @relation(fields: [userId], references: [id])
-  allergy           Allergy      @relation(fields: [allergyId], references: [id])
-  UserProfile       UserProfile? @relation(fields: [userProfileUserId], references: [userId])
-  userProfileUserId String?
+  userId    String
+  allergyId Int
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  allergy Allergy @relation(fields: [allergyId], references: [id], onDelete: Cascade)
 
   @@id([userId, allergyId])
+  @@index([userId])
+  @@index([allergyId])
 }
 
 model Cuisine {
@@ -250,18 +262,17 @@ model Cuisine {
 }
 
 model UserCuisinePreference {
-  id        String          @id @default(cuid())
   userId    String
   cuisineId Int
   kind      CuisinePrefKind
   createdAt DateTime        @default(now())
 
-  user              User         @relation(fields: [userId], references: [id])
-  cuisine           Cuisine      @relation(fields: [cuisineId], references: [id])
-  UserProfile       UserProfile? @relation(fields: [userProfileUserId], references: [userId])
-  userProfileUserId String?
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cuisine Cuisine @relation(fields: [cuisineId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, cuisineId, kind])
+  @@id([userId, cuisineId, kind])
+  @@index([userId])
+  @@index([cuisineId])
 }
 
 /**

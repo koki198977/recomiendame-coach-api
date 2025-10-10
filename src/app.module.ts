@@ -10,11 +10,12 @@ import { CheckinsModule } from './modules/checkins.module';
 import { MeModule } from './modules/me.module';
 import { MeFeedModule } from './modules/me-feed.module';
 import { PostsModule } from './modules/posts.module';
+import { ProfileModule } from './modules/profile.module';
 
 @Module({
   imports: [
     PrismaModule, PlansModule, UsersModule, AuthModule, CheckinsModule, 
-    MeModule, MeFeedModule, PostsModule
+    MeModule, MeFeedModule, PostsModule, ProfileModule
   ],
   controllers: [AppController],
   providers: [AppService],
