@@ -7,8 +7,6 @@ services:
       POSTGRES_USER: nest
       POSTGRES_PASSWORD: nest
       POSTGRES_DB: coach
-      NODE_ENV: development
-      DATABASE_URL: "postgresql://nest:nest@db:5432/coach?schema=public"
     ports:
       - '5532:5432'
     volumes:
@@ -22,10 +20,20 @@ services:
       - db
     ports:
       - '3001:3000'
-    env_file:
-      - .env
     environment:
       NODE_ENV: development
+      DATABASE_URL: "postgresql://nest:nest@db:5432/coach?schema=public"
+      PORT: '3000'
+      JWT_SECRET: "secretcoach"
+      JWT_EXPIRES_IN: "1d"
+      FRONT_URL: "http://localhost:5173"
+      RESET_COOLDOWN_MINUTES: '5'
+      MAIL_HOST: smtp.gmail.com
+      MAIL_PORT: '587'
+      MAIL_USER: recomiendameappcl@gmail.com
+      MAIL_PASS: "<ROTAR_INMEDIATO>"
+      MAIL_FROM: "Recomiéndame <no-reply@recomiendame.cl>"
+      API_URL: "https://api-coach.recomiendameapp.cl"
 
 volumes:
   pg_data:
