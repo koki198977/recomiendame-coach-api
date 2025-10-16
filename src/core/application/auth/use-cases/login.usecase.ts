@@ -16,10 +16,10 @@ export class LoginUseCase {
     const user = await this.users.findByEmail(input.email);
     if (!user) throw new UnauthorizedException('Credenciales inválidas');
 
-    const ok = await this.hasher.compare(input.password, user.props.passwordHash);
+    const ok = await this.hasher.compare(input.password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Credenciales inválidas');
 
-    const access_token = this.tokens.sign({ sub: user.id, email: user.email }, undefined);
+    const access_token = this.tokens.sign({ sub: user.id, email: user.email, role: user.role }, undefined);
     return { access_token };
   }
 }

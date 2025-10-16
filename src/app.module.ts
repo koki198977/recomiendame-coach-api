@@ -13,12 +13,13 @@ import { PostsModule } from './modules/posts.module';
 import { ProfileModule } from './modules/profile.module';
 import { TaxonomiesModule } from './modules/taxonomies.module';
 import { GamificationModule } from './modules/gamification.module';
+import { TaxonomiesAdminModule } from './modules/taxonomies-admin.module';
 
 @Module({
   imports: [
     PrismaModule, PlansModule, UsersModule, AuthModule, CheckinsModule, 
     MeModule, MeFeedModule, PostsModule, ProfileModule, TaxonomiesModule,
-    GamificationModule
+    GamificationModule, TaxonomiesAdminModule
   ],
   controllers: [AppController],
   providers: [AppService],

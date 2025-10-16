@@ -14,7 +14,7 @@ import { ProfileModule } from './profile.module';
 import { RegeneratePlanDayUseCase } from 'src/core/application/plans/use-cases/regenerate-plan-day.usecase';
 import { SwapMealUseCase } from 'src/core/application/plans/use-cases/swap-meal.usecase';
 import { PrismaModule } from 'src/infrastructure/database/prisma.module';
-import { GetShoppingListUseCase } from 'src/src/core/application/plans/use-cases/get-shopping-list.usecase';
+import { GetShoppingListUseCase } from 'src/core/application/plans/use-cases/get-shopping-list.usecase';
 import { GenerateShoppingListUseCase } from 'src/core/application/plans/use-cases/generate-shopping-list.usecase';
 
 @Module({

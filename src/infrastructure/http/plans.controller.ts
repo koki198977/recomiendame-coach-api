@@ -5,7 +5,7 @@ import { GetPlanByWeekUseCase } from 'src/core/application/plans/use-cases/get-p
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RegeneratePlanDayUseCase } from 'src/core/application/plans/use-cases/regenerate-plan-day.usecase';
 import { SwapMealUseCase } from 'src/core/application/plans/use-cases/swap-meal.usecase';
-import { GetShoppingListUseCase } from 'src/src/core/application/plans/use-cases/get-shopping-list.usecase';
+import { GetShoppingListUseCase } from 'src/core/application/plans/use-cases/get-shopping-list.usecase';
 import { GenerateShoppingListUseCase } from 'src/core/application/plans/use-cases/generate-shopping-list.usecase';
 
 @Controller('plans')

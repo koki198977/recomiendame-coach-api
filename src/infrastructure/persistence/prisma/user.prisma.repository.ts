@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { USER_REPOSITORY, UserRepositoryPort } from '../../../core/application/users/ports/out.user-repository.port';
+import { USER_REPOSITORY, UserRecord, UserRepositoryPort } from '../../../core/application/users/ports/out.user-repository.port';
 import { UserEntity } from '../../../core/domain/users/entities';
 
 @Injectable()
@@ -17,13 +17,14 @@ export class UserPrismaRepository implements UserRepositoryPort {
     });
   }
 
-  async findByEmail(email: string): Promise<UserEntity | null> {
-    const u = await this.prisma.user.findUnique({ where: { email } });
-    return u ? new UserEntity({
-      id: u.id, email: u.email, passwordHash: u.password,
-      createdAt: u.createdAt, updatedAt: u.updatedAt,
-    }) : null;
-    }
+  async findByEmail(email: string): Promise<UserRecord | null> {
+    const u = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, password: true, role: true },
+    });
+    if (!u) return null;
+    return { id: u.id, email: u.email, passwordHash: u.password, role: u.role as any };
+  }
 
   async findById(id: string): Promise<UserEntity | null> {
     const u = await this.prisma.user.findUnique({ where: { id } });
