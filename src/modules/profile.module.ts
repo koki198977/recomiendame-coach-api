@@ -24,5 +24,8 @@ import { TaxonomiesModule } from './taxonomies.module';
     ListTaxonomiesUseCase,
     { provide: PROFILE_REPO, useClass: ProfilePrismaRepository },
   ],
+  exports: [
+    { provide: PROFILE_REPO, useClass: ProfilePrismaRepository },
+  ],
 })
 export class ProfileModule {}
