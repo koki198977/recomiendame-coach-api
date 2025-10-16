@@ -3,6 +3,9 @@ import { GenerateWeeklyPlanUseCase } from '../../core/application/plans/use-case
 import { GetPlanByIdUseCase } from 'src/core/application/plans/use-cases/get-plan-by-id.usecase';
 import { GetPlanByWeekUseCase } from 'src/core/application/plans/use-cases/get-plan-by-week.usecase';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RegeneratePlanDayUseCase } from 'src/core/application/plans/use-cases/regenerate-plan-day.usecase';
+import { SwapMealUseCase } from 'src/core/application/plans/use-cases/swap-meal.usecase';
+import { GetShoppingListUseCase } from 'src/src/core/application/plans/use-cases/get-shopping-list.usecase';
 
 @Controller('plans')
 @UseGuards(JwtAuthGuard)
@@ -11,6 +14,9 @@ export class PlansController {
     private readonly generate: GenerateWeeklyPlanUseCase,
     private readonly getById: GetPlanByIdUseCase,
     private readonly getByWeek: GetPlanByWeekUseCase,
+    private readonly regenerateDay: RegeneratePlanDayUseCase,
+    private readonly swapMeal: SwapMealUseCase,
+    private readonly getShopping: GetShoppingListUseCase,
   ) {}
 
   @Get(':id')
@@ -38,5 +44,34 @@ export class PlansController {
     const res = await this.generate.execute(input);
     if (!res.ok) throw res.error;
     return res.value;
+  }
+
+  @Post(':planId/days/:dayIndex/regenerate')
+  async regenerate(
+    @Param('planId') planId: string,
+    @Param('dayIndex') dayIndexStr: string,
+    @Req() req: any,
+  ) {
+    const dayIndex = Number(dayIndexStr);
+    const userId = req.user.userId;
+    return this.regenerateDay.execute({ planId, dayIndex, userId });
+  }
+
+  @Post(':planId/days/:dayIndex/meals/:mealIndex/swap')
+  async swap(
+    @Param('planId') planId: string,
+    @Param('dayIndex') dayIndexStr: string,
+    @Param('mealIndex') mealIndexStr: string,
+    @Req() req: any,
+  ) {
+    const dayIndex = Number(dayIndexStr);
+    const mealIndex = Number(mealIndexStr);
+    const userId = req.user.userId;
+    return this.swapMeal.execute({ planId, dayIndex, mealIndex, userId });
+  }
+
+  @Get(':planId/shopping-list')
+  async shopping(@Param('planId') planId: string, @Req() req: any) {
+    return this.getShopping.execute(planId);
   }
 }

@@ -11,14 +11,21 @@ import { GetPlanByIdUseCase } from 'src/core/application/plans/use-cases/get-pla
 import { GetPlanByWeekUseCase } from 'src/core/application/plans/use-cases/get-plan-by-week.usecase';
 import { OpenAIMealPlannerAgent } from 'src/infrastructure/ai/meal-planner.agent.openai';
 import { ProfileModule } from './profile.module';
+import { RegeneratePlanDayUseCase } from 'src/core/application/plans/use-cases/regenerate-plan-day.usecase';
+import { SwapMealUseCase } from 'src/core/application/plans/use-cases/swap-meal.usecase';
+import { PrismaModule } from 'src/infrastructure/database/prisma.module';
+import { GetShoppingListUseCase } from 'src/src/core/application/plans/use-cases/get-shopping-list.usecase';
 
 @Module({
-  imports: [ProfileModule],
+  imports: [PrismaModule, ProfileModule],
   controllers: [PlansController],
   providers: [
     GenerateWeeklyPlanUseCase,
     GetPlanByIdUseCase,
     GetPlanByWeekUseCase,
+    RegeneratePlanDayUseCase,
+    SwapMealUseCase,
+    GetShoppingListUseCase,
     { provide: PLAN_REPOSITORY, useClass: PlanPrismaRepository },
     { provide: MEAL_PLANNER_AGENT, useClass: OpenAIMealPlannerAgent }, 
     //{ provide: MEAL_PLANNER_AGENT, useClass: FakeMealPlannerAgent },

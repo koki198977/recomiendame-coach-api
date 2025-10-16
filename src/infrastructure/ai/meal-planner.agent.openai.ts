@@ -1,4 +1,3 @@
-// src/infrastructure/ai/meal-planner.agent.openai.ts
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import OpenAI from 'openai';
 import { z } from 'zod';
@@ -8,7 +7,7 @@ import { PrismaService } from '../database/prisma.service';
 import { createHash } from 'crypto';
 
 // ─────────────────────────────────────────────────────────────
-// Zod schema compacto: 2 comidas, sin ingredients/tags
+// Zod schemas
 const MealSchemaCompact = z.object({
   slot: z.enum(['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK']),
   title: z.string().min(3),
@@ -33,6 +32,17 @@ const WeekResponseSchema = z.object({
       }),
     )
     .length(7),
+});
+
+// Para micro-prompt de ingredientes
+const IngredientSchema = z.object({
+  name: z.string(),
+  qty: z.number().positive().optional(),
+  unit: z.string().optional(),
+  category: z.string().optional(),
+});
+const IngredientListSchema = z.object({
+  ingredients: z.array(IngredientSchema).min(3).max(7),
 });
 
 // Sanitizar por si llegan fences
@@ -68,7 +78,13 @@ async function mapWithConcurrency<T, R>(
 function weekSeed(userId: string, weekStart: Date): number {
   const s = `${userId}|${weekStart.toISOString().slice(0, 10)}`;
   const hex = createHash('sha1').update(s).digest('hex').slice(0, 8);
-  return parseInt(hex, 16); // 0..~4e9
+  return parseInt(hex, 16);
+}
+
+function toLowerSet(arr?: string[]): Set<string> {
+  const s = new Set<string>();
+  for (const t of arr ?? []) if (t) s.add(t.toLowerCase());
+  return s;
 }
 
 @Injectable()
@@ -79,11 +95,114 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
   });
 
   private model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
-  private maxTokens = +(process.env.OPENAI_MAX_TOKENS ?? 260); // por día
+  private maxTokens = +(process.env.OPENAI_MAX_TOKENS ?? 260); // por día / swap
   private concurrency = +(process.env.OPENAI_CONCURRENCY ?? 3);
+  private ingConcurrency = Math.max(1, Math.min(4, +(process.env.OPENAI_ING_CONCURRENCY ?? 2)));
 
   constructor(private prisma: PrismaService) {}
 
+  // ─────────────────────────────────────────────────────────────
+  // Helpers comunes
+  private async askJson(params: {
+    system: string;
+    user: string;
+    maxTokens: number;
+  }): Promise<{ raw: string; finish: string | null }> {
+    const completion = await this.client.chat.completions.create({
+      model: this.model,
+      temperature: 0.3,
+      max_tokens: params.maxTokens,
+      response_format: { type: 'json_object' },
+      presence_penalty: 0.1,
+      frequency_penalty: 0.6,
+      messages: [
+        { role: 'system', content: params.system },
+        { role: 'user', content: params.user },
+      ],
+    });
+    const finish = completion.choices[0]?.finish_reason ?? null;
+    const raw = completion.choices[0]?.message?.content ?? '{}';
+    return { raw, finish };
+  }
+
+  private commonContext(
+    macros: { kcalTarget: number; protein_g: number; carbs_g: number; fat_g: number },
+    preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] },
+    avoidTitles?: string[],
+  ): string {
+    const avoidNormalized = [...toLowerSet(avoidTitles)];
+    return [
+      'Eres un nutricionista asistido por IA.',
+      'Debes responder SIEMPRE en español neutro (no uses inglés).',
+      'Nombres de platos en español estándar (ej: “Avena con frutas”, “Pollo con quinoa”, “Ensalada de garbanzos”).',
+      `Objetivo calórico por día: ${macros.kcalTarget} kcal. Macros aprox: P ${macros.protein_g}g / C ${macros.carbs_g}g / G ${macros.fat_g}g.`,
+      `Restringe alergias: ${(preferences?.allergies ?? []).join(', ') || 'ninguna'}.`,
+      `Preferencias: ${(preferences?.cuisinesLike ?? []).join(', ') || 'ninguna'}. Evitar: ${
+        (preferences?.cuisinesDislike ?? []).join(', ') || 'ninguna'
+      }.`,
+      avoidNormalized.length
+        ? `Evita repetir (o variantes muy parecidas) de: ${avoidNormalized.slice(0, 40).map(t => `"${t}"`).join(', ')}.`
+        : 'Evita repetir títulos dentro de esta semana.',
+      'Devuelve **solo** JSON válido (sin bloques de código ni explicaciones).',
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  private daySchemaCompact(dayIndexHint?: number) {
+    return `Schema EXACTO (2 comidas, compacto, sin ingredients/tags):
+{
+  "dayIndex": ${dayIndexHint ?? '1..7'},
+  "meals": [
+    { "slot": "BREAKFAST|LUNCH|DINNER|SNACK", "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number },
+    { "slot": "BREAKFAST|LUNCH|DINNER|SNACK", "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number }
+  ]
+}`;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Ingredientes (micro-prompt por comida)
+  private async draftIngredientsForMeal(meal: { title: string; slot: string }) {
+    const system = 'Responde SIEMPRE en español. Devuelve únicamente JSON válido (sin explicaciones).';
+    const user = [
+      `Dado este plato: "${meal.title}" (slot: ${meal.slot}).`,
+      `Devuelve de 3 a 7 ingredientes con cantidad y unidad cuando aplique.`,
+      `Formato exacto: { "ingredients": [ { "name": string, "qty"?: number, "unit"?: string, "category"?: string } ] }`,
+      `Ejemplos de unidades: "g", "ml", "cda", "cdta", "taza", "unidad".`,
+      `Evita cantidades absurdas. Mantén español neutro.`,
+    ].join('\n');
+
+    const { raw } = await this.askJson({
+      system,
+      user,
+      maxTokens: 220,
+    });
+
+    const json = sanitizeToJson(raw);
+    const parsed = IngredientListSchema.safeParse(JSON.parse(json));
+    if (!parsed.success) {
+      // Si falla el parseo, devolvemos vacío (no bloqueamos el flujo)
+      return [] as Array<{ name: string; qty?: number; unit?: string; category?: string }>;
+    }
+    return parsed.data.ingredients;
+  }
+
+  private async ensureIngredients(days: PlanDay[]) {
+    // Recorremos todas las comidas de la semana y pedimos ingredientes a las que no tengan
+    const allMeals: Array<{ day: PlanDay; index: number }> = [];
+    for (const d of days) {
+      d.meals.forEach((_, i) => allMeals.push({ day: d, index: i }));
+    }
+    await mapWithConcurrency(allMeals, this.ingConcurrency, async ({ day, index }) => {
+      const m = day.meals[index] as any;
+      if (!m.ingredients || m.ingredients.length === 0) {
+        m.ingredients = await this.draftIngredientsForMeal({ title: m.title, slot: m.slot });
+      }
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 1) Semana completa
   async draftWeekPlan({
     userId,
     weekStart,
@@ -96,7 +215,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
     preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] };
   }): Promise<{ days: PlanDay[]; notes?: string }> {
     try {
-      // 1) títulos usados recientemente (últimas 6 semanas)
+      // títulos de 6 semanas para anti-repetición
       const sixWeeksAgo = new Date(weekStart);
       sixWeeksAgo.setUTCDate(sixWeeksAgo.getUTCDate() - 42);
 
@@ -104,7 +223,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         where: { userId, weekStart: { gte: sixWeeksAgo, lt: weekStart } },
         include: { days: { include: { meals: true } } },
         orderBy: { weekStart: 'desc' },
-        take: 6, // por si hay más de un plan semanal en el rango
+        take: 6,
       });
 
       const prevTitles = new Set<string>();
@@ -114,28 +233,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         }
       }
 
-      // 2) contexto común en ESPAÑOL
-      const baseContext = [
-        'Eres un nutricionista asistido por IA.',
-        'Debes responder SIEMPRE en español neutro (no uses inglés).',
-        'Nombres de platos en español estándar (por ejemplo: “Avena con frutas”, “Pollo con quinoa”, “Ensalada de garbanzos”).',
-        `Objetivo calórico por día: ${macros.kcalTarget} kcal. Macros aprox: P ${macros.protein_g}g / C ${macros.carbs_g}g / G ${macros.fat_g}g.`,
-        `Restringe alergias: ${(preferences?.allergies ?? []).join(', ') || 'ninguna'}.`,
-        `Preferencias: ${(preferences?.cuisinesLike ?? []).join(', ') || 'ninguna'}. Evitar: ${
-          (preferences?.cuisinesDislike ?? []).join(', ') || 'ninguna'
-        }.`,
-        'Devuelve **solo** JSON válido (sin bloques de código).',
-        `Schema EXACTO (2 comidas, compacto, sin ingredients/tags):
-{
-  "dayIndex": 1..7,
-  "meals": [
-    { "slot": "BREAKFAST|LUNCH|DINNER|SNACK", "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number },
-    { "slot": "BREAKFAST|LUNCH|DINNER|SNACK", "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number }
-  ]
-}`,
-      ].join('\n');
-
-      // 3) temas/distorsiones con semilla — variedad entre semanas
+      // variedad con semilla
       const seed = weekSeed(userId, weekStart);
       const themes = [
         'toque mediterráneo',
@@ -148,7 +246,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
       ];
       const themeIdx = seed % themes.length;
 
-      // rotación de slots del día para variar BREAKFAST/LUNCH/DINNER
+      // rotación de slots
       const slotPatterns: Array<Array<'BREAKFAST' | 'LUNCH' | 'DINNER' | 'SNACK'>> = [
         ['BREAKFAST', 'DINNER'],
         ['LUNCH', 'DINNER'],
@@ -159,53 +257,40 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         ['BREAKFAST', 'DINNER'],
       ];
 
-      // 4) anti-repetición semanal
+      const baseContext = this.commonContext(macros, preferences, Array.from(prevTitles));
+
+      // anti-repetición semanal
       const usedTitlesThisWeek = new Set<string>();
 
       const dayIndices = [1, 2, 3, 4, 5, 6, 7];
       const days = await mapWithConcurrency(dayIndices, this.concurrency, async (dayIndex) => {
-        const avoid = [
-          ...Array.from(prevTitles).slice(0, 40),
-          ...Array.from(usedTitlesThisWeek).slice(0, 20),
-        ];
-        const antiRepeatHint =
-          avoid.length > 0
-            ? `Evita repetir estos títulos usados recientemente: ${avoid.join(' | ')}.`
-            : 'Varía títulos y combinaciones; no repitas dentro de la semana.';
-
         const slots = slotPatterns[(themeIdx + dayIndex - 1) % slotPatterns.length];
 
         const userPrompt = [
           baseContext,
-          `Tema libre del día: ${themes[themeIdx]}.`,
+          `Tema del día: ${themes[themeIdx]}.`,
           `Genera el JSON del día ${dayIndex}. EXACTAMENTE 2 comidas en los slots: ${slots.join(' y ')}.`,
           `Distribuye kcal para sumar aproximadamente ${macros.kcalTarget} kcal en el día.`,
-          antiRepeatHint,
-          'Evita anglicismos; usa “porridge de avena”, “salteado de”, “ensalada de”, etc.',
+          'Evita anglicismos; usa “porridge de avena”, “salteado de…”, “ensalada de…”, etc.',
+          this.daySchemaCompact(dayIndex),
         ].join('\n\n');
 
-        const completion = await this.client.chat.completions.create({
-          model: this.model,
-          temperature: 0.3,
-          max_tokens: this.maxTokens,
-          response_format: { type: 'json_object' },
-          // penaliza repeticiones
-          presence_penalty: 0.1,
-          frequency_penalty: 0.6,
-          messages: [
-            { role: 'system', content: 'Responde SIEMPRE en español. Devuelve únicamente JSON válido (sin explicaciones).' },
-            { role: 'user', content: userPrompt },
-          ],
+        const { raw, finish } = await this.askJson({
+          system: 'Responde SIEMPRE en español. Devuelve únicamente JSON válido (sin explicaciones).',
+          user: userPrompt,
+          maxTokens: this.maxTokens,
         });
 
-        const raw = completion.choices[0]?.message?.content ?? '{}';
+        if (finish === 'length') {
+          throw new Error(`Truncado por tokens en dayIndex=${dayIndex}. Sube OPENAI_MAX_TOKENS.`);
+        }
+
         const json = sanitizeToJson(raw);
         const parsed = DayResponseSchemaCompact.safeParse(JSON.parse(json));
         if (!parsed.success) {
           throw new Error(`Validación JSON falló en dayIndex=${dayIndex}: ${parsed.error.message}`);
         }
 
-        // marca títulos usados esta semana (en minúsculas)
         parsed.data.meals.forEach((m) => usedTitlesThisWeek.add(m.title.toLowerCase()));
 
         return {
@@ -214,21 +299,18 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         };
       });
 
-      // 5) Notas (muy corta). Si falla, la ignoramos.
+      // ✅ Completar ingredientes (micro-prompt barato por comida)
+      await this.ensureIngredients(days);
+
+      // Notas (opcional, muy corto)
       let notes: string | undefined = undefined;
       try {
-        const notesCompletion = await this.client.chat.completions.create({
-          model: this.model,
-          temperature: 0.1,
-          max_tokens: Math.min(this.maxTokens, 120),
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: 'Responde en español. Devuelve únicamente JSON válido.' },
-            { role: 'user', content: 'Devuelve {"notes":"tip motivador muy corto (<= 10 palabras) en español"}' },
-          ],
+        const { raw } = await this.askJson({
+          system: 'Responde en español. Devuelve únicamente JSON válido.',
+          user: 'Devuelve {"notes":"tip motivador muy corto (<= 10 palabras) en español"}',
+          maxTokens: Math.min(this.maxTokens, 120),
         });
-        const rawNotes = notesCompletion.choices[0]?.message?.content ?? '{}';
-        const jsonNotes = sanitizeToJson(rawNotes);
+        const jsonNotes = sanitizeToJson(raw);
         const parsed = z.object({ notes: z.string().max(120) }).safeParse(JSON.parse(jsonNotes));
         if (parsed.success) notes = parsed.data.notes;
       } catch {}
@@ -240,6 +322,134 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
 
       days.sort((a, b) => a.dayIndex - b.dayIndex);
       return { days, notes };
+    } catch (e: any) {
+      throw new InternalServerErrorException(`MealPlannerAgent error: ${e?.message ?? e}`);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 2) Regenerar un día puntual
+  async draftDayPlan({
+    userId,
+    weekStart,
+    dayIndex,
+    macros,
+    preferences,
+    avoidTitles,
+  }: {
+    userId: string;
+    weekStart: Date;
+    dayIndex: number;
+    macros: { kcalTarget: number; protein_g: number; carbs_g: number; fat_g: number };
+    preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] };
+    avoidTitles?: string[];
+  }): Promise<{ day: PlanDay }> {
+    try {
+      const seed = weekSeed(userId, weekStart) ^ dayIndex;
+      const baseContext = this.commonContext(macros, preferences, avoidTitles);
+
+      const userPrompt = [
+        baseContext,
+        `Genera el JSON del día ${dayIndex}. EXACTAMENTE 2 comidas (elige slots apropiados).`,
+        `Evita títulos repetidos o muy similares a: ${avoidTitles?.slice(0, 40).join(' | ') || '(ninguno)'}`,
+        `Varía estilos y combinaciones (semilla: ${seed}).`,
+        this.daySchemaCompact(dayIndex),
+      ].join('\n\n');
+
+      const { raw, finish } = await this.askJson({
+        system: 'Responde SIEMPRE en español. Devuelve únicamente JSON válido (sin explicaciones).',
+        user: userPrompt,
+        maxTokens: this.maxTokens,
+      });
+
+      if (finish === 'length') {
+        throw new Error(`Truncado por tokens en draftDayPlan dayIndex=${dayIndex}.`);
+      }
+
+      const json = sanitizeToJson(raw);
+      const parsed = DayResponseSchemaCompact.safeParse(JSON.parse(json));
+      if (!parsed.success) {
+        throw new Error(`Validación JSON (draftDayPlan) falló en d${dayIndex}: ${parsed.error.message}`);
+      }
+
+      const day: PlanDay = {
+        dayIndex,
+        meals: parsed.data.meals as any,
+      };
+
+      // ✅ ingredientes
+      await this.ensureIngredients([day]);
+
+      return { day };
+    } catch (e: any) {
+      throw new InternalServerErrorException(`MealPlannerAgent error: ${e?.message ?? e}`);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 3) Sugerir swap para UNA comida
+  async suggestSwap({
+    userId,
+    weekStart,
+    dayIndex,
+    macros,
+    target,
+    preferences,
+    avoidTitles,
+  }: {
+    userId: string;
+    weekStart: Date;
+    dayIndex: number;
+    macros: { kcalTarget: number; protein_g: number; carbs_g: number; fat_g: number };
+    target: { slot: PlanDay['meals'][number]['slot']; kcal: number };
+    preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] };
+    avoidTitles?: string[];
+  }): Promise<{ meal: PlanDay['meals'][number] }> {
+    try {
+      const seed = weekSeed(userId, weekStart) ^ (dayIndex * 17);
+      const baseContext = this.commonContext(macros, preferences, avoidTitles);
+
+      const kcalMin = Math.round(target.kcal * 0.85);
+      const kcalMax = Math.round(target.kcal * 1.15);
+
+      const userPrompt = [
+        baseContext,
+        `SUGIERE UNA SOLA COMIDA para reemplazar en el día ${dayIndex}.`,
+        `Debe mantener el slot: "${target.slot}".`,
+        `Calorías objetivo entre ${kcalMin} y ${kcalMax}.`,
+        `Evita títulos repetidos o muy similares a: ${avoidTitles?.slice(0, 40).join(' | ') || '(ninguno)'}`,
+        `Varía estilos y combinaciones (semilla: ${seed}).`,
+        `Esquema exacto de salida (JSON): { "slot": "${target.slot}", "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number }`,
+      ].join('\n\n');
+
+      const { raw, finish } = await this.askJson({
+        system: 'Responde SIEMPRE en español. Devuelve únicamente JSON válido (sin explicaciones).',
+        user: userPrompt,
+        maxTokens: Math.min(this.maxTokens, 260),
+      });
+
+      if (finish === 'length') {
+        throw new Error(`Truncado por tokens en suggestSwap día ${dayIndex}.`);
+      }
+
+      const json = sanitizeToJson(raw);
+      const parsed = MealSchemaCompact.safeParse(JSON.parse(json));
+      if (!parsed.success) {
+        throw new Error(`Validación JSON (swap) falló: ${parsed.error.message}`);
+      }
+
+      const meal = parsed.data as any;
+
+      // ✅ ingredientes del swap
+      meal.ingredients = await this.draftIngredientsForMeal({
+        title: meal.title,
+        slot: meal.slot,
+      });
+
+      // defensa
+      if (meal.slot !== target.slot) meal.slot = target.slot as any;
+
+      return { meal };
     } catch (e: any) {
       throw new InternalServerErrorException(`MealPlannerAgent error: ${e?.message ?? e}`);
     }
