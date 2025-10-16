@@ -15,6 +15,7 @@ import { RegeneratePlanDayUseCase } from 'src/core/application/plans/use-cases/r
 import { SwapMealUseCase } from 'src/core/application/plans/use-cases/swap-meal.usecase';
 import { PrismaModule } from 'src/infrastructure/database/prisma.module';
 import { GetShoppingListUseCase } from 'src/src/core/application/plans/use-cases/get-shopping-list.usecase';
+import { GenerateShoppingListUseCase } from 'src/core/application/plans/use-cases/generate-shopping-list.usecase';
 
 @Module({
   imports: [PrismaModule, ProfileModule],
@@ -26,6 +27,7 @@ import { GetShoppingListUseCase } from 'src/src/core/application/plans/use-cases
     RegeneratePlanDayUseCase,
     SwapMealUseCase,
     GetShoppingListUseCase,
+    GenerateShoppingListUseCase,
     { provide: PLAN_REPOSITORY, useClass: PlanPrismaRepository },
     { provide: MEAL_PLANNER_AGENT, useClass: OpenAIMealPlannerAgent }, 
     //{ provide: MEAL_PLANNER_AGENT, useClass: FakeMealPlannerAgent },

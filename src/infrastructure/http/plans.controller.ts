@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, StreamableFile, UseGuards } from '@nestjs/common';
 import { GenerateWeeklyPlanUseCase } from '../../core/application/plans/use-cases/generate-weekly-plan.usecase';
 import { GetPlanByIdUseCase } from 'src/core/application/plans/use-cases/get-plan-by-id.usecase';
 import { GetPlanByWeekUseCase } from 'src/core/application/plans/use-cases/get-plan-by-week.usecase';
@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RegeneratePlanDayUseCase } from 'src/core/application/plans/use-cases/regenerate-plan-day.usecase';
 import { SwapMealUseCase } from 'src/core/application/plans/use-cases/swap-meal.usecase';
 import { GetShoppingListUseCase } from 'src/src/core/application/plans/use-cases/get-shopping-list.usecase';
+import { GenerateShoppingListUseCase } from 'src/core/application/plans/use-cases/generate-shopping-list.usecase';
 
 @Controller('plans')
 @UseGuards(JwtAuthGuard)
@@ -17,6 +18,7 @@ export class PlansController {
     private readonly regenerateDay: RegeneratePlanDayUseCase,
     private readonly swapMeal: SwapMealUseCase,
     private readonly getShopping: GetShoppingListUseCase,
+    private readonly shoppingListUC: GenerateShoppingListUseCase,
   ) {}
 
   @Get(':id')
@@ -70,8 +72,31 @@ export class PlansController {
     return this.swapMeal.execute({ planId, dayIndex, mealIndex, userId });
   }
 
+  // @Get(':planId/shopping-list')
+  // async shopping(@Param('planId') planId: string, @Req() req: any) {
+  //   return this.getShopping.execute(planId);
+  // }
+
   @Get(':planId/shopping-list')
-  async shopping(@Param('planId') planId: string, @Req() req: any) {
-    return this.getShopping.execute(planId);
+  async shoppingList(
+    @Param('planId') planId: string,
+    @Query('take') takeStr?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    const take = takeStr ? Number(takeStr) : undefined;
+    return this.shoppingListUC.execute(planId, { take, cursor });
+  }
+
+  @Get(':planId/shopping-list.csv')
+  async shoppingListCSV(@Param('planId') planId: string): Promise<StreamableFile> {
+    // exporta TODO en un solo CSV
+    const { items } = await this.shoppingListUC.execute(planId, { take: 50000 });
+    const csv = this.shoppingListUC.toCSV(items);
+    const buf = Buffer.from(csv, 'utf8');
+
+    return new StreamableFile(buf, {
+      type: 'text/csv; charset=utf-8',
+      disposition: `attachment; filename="shopping-list-${planId}.csv"`,
+    });
   }
 }
