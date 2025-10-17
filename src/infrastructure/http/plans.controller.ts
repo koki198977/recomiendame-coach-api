@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, StreamableFile, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, Query, Req, StreamableFile, UseGuards } from '@nestjs/common';
 import { GenerateWeeklyPlanUseCase } from '../../core/application/plans/use-cases/generate-weekly-plan.usecase';
 import { GetPlanByIdUseCase } from 'src/core/application/plans/use-cases/get-plan-by-id.usecase';
 import { GetPlanByWeekUseCase } from 'src/core/application/plans/use-cases/get-plan-by-week.usecase';
@@ -7,6 +7,8 @@ import { RegeneratePlanDayUseCase } from 'src/core/application/plans/use-cases/r
 import { SwapMealUseCase } from 'src/core/application/plans/use-cases/swap-meal.usecase';
 import { GetShoppingListUseCase } from 'src/core/application/plans/use-cases/get-shopping-list.usecase';
 import { GenerateShoppingListUseCase } from 'src/core/application/plans/use-cases/generate-shopping-list.usecase';
+import { MacrosService } from 'src/core/application/plans/services/macros.service';
+import { PROFILE_REPO, ProfileRepoPort } from 'src/core/application/profile/ports/out.profile-repo.port';
 
 @Controller('plans')
 @UseGuards(JwtAuthGuard)
@@ -19,6 +21,8 @@ export class PlansController {
     private readonly swapMeal: SwapMealUseCase,
     private readonly getShopping: GetShoppingListUseCase,
     private readonly shoppingListUC: GenerateShoppingListUseCase,
+    private readonly macros: MacrosService,
+    @Inject(PROFILE_REPO) private readonly profiles: ProfileRepoPort,
   ) {}
 
   @Get(':id')
@@ -34,15 +38,24 @@ export class PlansController {
 
   @Post('generate')
   async generatePlan(@Query('week') isoWeek: string, @Body() body: any, @Req() req: any) {
-    const userId = req.user.userId;
-    const input = {
-      userId,
-      isoWeek,
-      kcalTarget: body.kcalTarget ?? 2200,
-      protein_g: body.protein_g ?? 140,
-      carbs_g: body.carbs_g ?? 220,
-      fat_g: body.fat_g ?? 70,
-    };
+    const userId = req.user.userId ?? req.user.sub;
+
+    let kcalTarget = body.kcalTarget;
+    let protein_g = body.protein_g;
+    let carbs_g = body.carbs_g;
+    let fat_g = body.fat_g;
+
+    if ([kcalTarget, protein_g, carbs_g, fat_g].some(v => v == null)) {
+      // calcular
+      const prof = await this.profiles.get(userId);
+      const calc = this.macros.compute({
+        sex: prof.sex, birthDate: prof.birthDate, heightCm: prof.heightCm, weightKg: Number(prof.weightKg),
+        activityLevel: prof.activityLevel
+      }, prof.goal ? { type: prof.goal.goalType } : undefined as any);
+      ({ kcalTarget, protein_g, carbs_g, fat_g } = calc.macros);
+    }
+
+    const input = { userId, isoWeek, kcalTarget, protein_g, carbs_g, fat_g };
     const res = await this.generate.execute(input);
     if (!res.ok) throw res.error;
     return res.value;
@@ -71,11 +84,6 @@ export class PlansController {
     const userId = req.user.userId;
     return this.swapMeal.execute({ planId, dayIndex, mealIndex, userId });
   }
-
-  // @Get(':planId/shopping-list')
-  // async shopping(@Param('planId') planId: string, @Req() req: any) {
-  //   return this.getShopping.execute(planId);
-  // }
 
   @Get(':planId/shopping-list')
   async shoppingList(

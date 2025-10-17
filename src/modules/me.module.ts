@@ -10,11 +10,18 @@ import { PointsLedgerPrismaRepository } from '../infrastructure/persistence/pris
 
 import { ACHIEVEMENT_PORT } from '../core/application/achievements/ports/out.achievement.port';
 import { AchievementPrismaRepository } from '../infrastructure/persistence/prisma/achievement.prisma.repository';
+import { MeMacrosController } from 'src/infrastructure/http/me.macros.controller';
+import { MacrosService } from 'src/core/application/plans/services/macros.service';
+import { ProfilesPrismaRepository } from 'src/infrastructure/persistence/prisma/profiles.prisma.repository';
+import { PrismaService } from 'src/infrastructure/database/prisma.service';
 
 @Module({
-  controllers: [MeController],
+  controllers: [MeController, MeMacrosController],
   providers: [
     GetMyStatsUseCase,
+    MacrosService,
+    ProfilesPrismaRepository,
+    PrismaService,
     { provide: STREAK_REPOSITORY, useClass: StreakPrismaRepository },
     { provide: POINTS_LEDGER_PORT, useClass: PointsLedgerPrismaRepository },
     { provide: ACHIEVEMENT_PORT, useClass: AchievementPrismaRepository },

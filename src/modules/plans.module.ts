@@ -16,9 +16,12 @@ import { SwapMealUseCase } from 'src/core/application/plans/use-cases/swap-meal.
 import { PrismaModule } from 'src/infrastructure/database/prisma.module';
 import { GetShoppingListUseCase } from 'src/core/application/plans/use-cases/get-shopping-list.usecase';
 import { GenerateShoppingListUseCase } from 'src/core/application/plans/use-cases/generate-shopping-list.usecase';
+import { PROFILE_REPO } from 'src/core/application/profile/ports/out.profile-repo.port';
+import { ProfilesPrismaRepository } from 'src/infrastructure/persistence/prisma/profiles.prisma.repository';
+import { MacrosService } from 'src/core/application/plans/services/macros.service';
 
 @Module({
-  imports: [PrismaModule, ProfileModule],
+  imports: [PrismaModule],
   controllers: [PlansController],
   providers: [
     GenerateWeeklyPlanUseCase,
@@ -28,10 +31,12 @@ import { GenerateShoppingListUseCase } from 'src/core/application/plans/use-case
     SwapMealUseCase,
     GetShoppingListUseCase,
     GenerateShoppingListUseCase,
+    MacrosService,
     { provide: PLAN_REPOSITORY, useClass: PlanPrismaRepository },
     { provide: MEAL_PLANNER_AGENT, useClass: OpenAIMealPlannerAgent }, 
     //{ provide: MEAL_PLANNER_AGENT, useClass: FakeMealPlannerAgent },
     { provide: NOTIFICATION_PORT, useClass: InAppNotificationAdapter },
+    { provide: PROFILE_REPO, useClass: ProfilesPrismaRepository },
   ],
   exports: [],
 })
