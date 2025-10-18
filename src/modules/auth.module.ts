@@ -30,10 +30,10 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 
 const templateDirCandidates = [
+  join(process.cwd(), 'src', 'infrastructure', 'mailer', 'templates'),
   join(__dirname, '..', 'infrastructure', 'mailer', 'templates'),
   join(process.cwd(), 'dist', 'src', 'infrastructure', 'mailer', 'templates'),
   join(process.cwd(), 'dist', 'infrastructure', 'mailer', 'templates'),
-  join(process.cwd(), 'src', 'infrastructure', 'mailer', 'templates'),
 ];
 const templateDir = templateDirCandidates.find((dir) => existsSync(dir)) ?? templateDirCandidates[0];
 

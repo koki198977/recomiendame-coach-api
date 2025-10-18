@@ -1,12 +1,16 @@
 import { MailerPort } from 'src/core/application/auth/ports/out.mailer.port';
 
 export class ConsoleMailerAdapter implements MailerPort {
-  async sendEmail(to: string, subject: string, html: string): Promise<void> {
+  async sendEmailVerification(
+    to: string,
+    subject: string,
+    templateOrHtml: string,
+    context: any = {},
+  ): Promise<void> {
+    const payload = templateOrHtml.trimStart().startsWith('<')
+      ? templateOrHtml
+      : { template: templateOrHtml, context };
     // eslint-disable-next-line no-console
-    console.log('[MAIL DEV]', { to, subject, html });
-  }
-  async sendEmailVerification(to: string, link: string): Promise<void> {
-    const html = `<p>Verifica tu correo: <a href="${link}">${link}</a></p>`;
-    await this.sendEmail(to, 'Verifica tu correo', html);
+    console.log('[MAIL DEV]', { to, subject, payload });
   }
 }

@@ -5,19 +5,23 @@ import { MailerPort } from 'src/core/application/auth/ports/out.mailer.port';
 @Injectable()
 export class EmailAdapter implements MailerPort {
   constructor(private readonly mailer: MailerService) {}
+
   async sendEmailVerification(
     to: string,
     subject: string,
-    template: string,
+    templateOrHtml: string,
     context: any = {},
   ): Promise<void> {
+    const trimmed = templateOrHtml.trimStart();
+    const isHtmlLiteral = trimmed.startsWith('<');
+
     await this.mailer.sendMail({
       to,
       subject,
-      template,
-      context,
+      ...(isHtmlLiteral
+        ? { html: templateOrHtml }
+        : { template: templateOrHtml, context }),
     });
   }
 }
-
 

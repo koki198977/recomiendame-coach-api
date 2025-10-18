@@ -5,6 +5,7 @@ import { PASSWORD_RESET_REPO, PasswordResetRepoPort } from '../ports/out.passwor
 import { MAILER_PORT, MailerPort } from '../ports/out.mailer.port';
 import { TOKEN_GENERATOR, TokenGeneratorPort } from '../ports/out.token-generator.port';
 import * as crypto from 'crypto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RequestResetPasswordUseCase {
@@ -13,6 +14,7 @@ export class RequestResetPasswordUseCase {
     @Inject(PASSWORD_RESET_REPO) private readonly resets: PasswordResetRepoPort,
     @Inject(MAILER_PORT) private readonly mailer: MailerPort,
     @Inject(TOKEN_GENERATOR) private readonly tokenGen: TokenGeneratorPort,
+    private readonly config: ConfigService,
   ) {}
 
   async execute(input: RequestResetDto): Promise<{ ok: true }> {
@@ -44,16 +46,19 @@ export class RequestResetPasswordUseCase {
     await this.resets.create({ userId: user.id, tokenHash, expiresAt });
 
     // 4) enviar correo
-    const baseUrl = process.env.FRONT_URL ?? 'http://localhost:5173';
-    const link = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    const frontUrl = this.config.get<string>('FRONTEND_URL')
+      ?? this.config.get<string>('FRONT_URL')
+      ?? 'http://localhost:5173';
+    const apiUrl = this.config.get<string>('API_URL') ?? frontUrl;
+    const baseFront = frontUrl.replace(/\/+$/, '');
+    const resetUrl = `${baseFront}/reset-password?token=${encodeURIComponent(token)}`;
+    const logoUrl = `${apiUrl.replace(/\/+$/, '')}/static/assets/logo.png`;
+    const fullName = user.email;
     await this.mailer.sendEmailVerification(
       user.email,
-      'Recuperar contraseña',
-      `
-        <p>Hola,</p>
-        <p>Usa este enlace para restablecer tu contraseña (expira en 30 minutos):</p>
-        <p><a href="${link}">${link}</a></p>
-      `
+      'Restablece tu contraseña',
+      'reset-password',
+      { fullName, resetUrl, logoUrl },
     );
 
 
