@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { PlansModule } from './modules/plans.module';
 
 import { AppController } from './app.controller';
@@ -17,6 +18,7 @@ import { TaxonomiesAdminModule } from './modules/taxonomies-admin.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule, PlansModule, UsersModule, AuthModule, CheckinsModule, 
     MeModule, MeFeedModule, PostsModule, ProfileModule, TaxonomiesModule,
     GamificationModule, TaxonomiesAdminModule

@@ -20,10 +20,10 @@ export class UserPrismaRepository implements UserRepositoryPort {
   async findByEmail(email: string): Promise<UserRecord | null> {
     const u = await this.prisma.user.findUnique({
       where: { email },
-      select: { id: true, email: true, password: true, role: true },
+      select: { id: true, email: true, password: true, role: true, emailVerified: true },
     });
     if (!u) return null;
-    return { id: u.id, email: u.email, passwordHash: u.password, role: u.role as any };
+    return { id: u.id, email: u.email, passwordHash: u.password, role: u.role as any, emailVerified: u.emailVerified };
   }
 
   async findById(id: string): Promise<UserEntity | null> {

@@ -19,7 +19,7 @@ export class LoginUseCase {
     const ok = await this.hasher.compare(input.password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Credenciales inválidas');
 
-    const access_token = this.tokens.sign({ sub: user.id, email: user.email, role: user.role }, undefined);
+    const access_token = this.tokens.sign({ sub: user.id, email: user.email, role: user.role, emailVerified: user.emailVerified }, undefined);
     return { access_token };
   }
 }

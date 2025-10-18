@@ -46,11 +46,16 @@ export class RequestResetPasswordUseCase {
     // 4) enviar correo
     const baseUrl = process.env.FRONT_URL ?? 'http://localhost:5173';
     const link = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
-    await this.mailer.send(user.email, 'Recuperar contraseña', `
-      <p>Hola,</p>
-      <p>Usa este enlace para restablecer tu contraseña (expira en 30 minutos):</p>
-      <p><a href="${link}">${link}</a></p>
-    `);
+    await this.mailer.sendEmailVerification(
+      user.email,
+      'Recuperar contraseña',
+      `
+        <p>Hola,</p>
+        <p>Usa este enlace para restablecer tu contraseña (expira en 30 minutos):</p>
+        <p><a href="${link}">${link}</a></p>
+      `
+    );
+
 
     return { ok: true };
   }

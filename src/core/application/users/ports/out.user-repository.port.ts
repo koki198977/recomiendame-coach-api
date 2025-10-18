@@ -5,6 +5,7 @@ export interface UserRecord {
   email: string;
   passwordHash: string;
   role: 'USER' | 'ADMIN';
+  emailVerified: boolean;
 }
 
 export interface UserRepositoryPort {

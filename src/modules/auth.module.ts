@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { AuthController } from '../infrastructure/http/auth.controller';
 import { LoginUseCase } from '../core/application/auth/use-cases/login.usecase';
 import { TOKEN_SIGNER } from '../core/application/auth/ports/out.token-signer.port';
@@ -13,10 +14,28 @@ import { RequestResetPasswordUseCase } from 'src/core/application/auth/use-cases
 import { PASSWORD_RESET_REPO } from 'src/core/application/auth/ports/out.password-reset-repo.port';
 import { PasswordResetPrismaRepository } from 'src/infrastructure/persistence/prisma/password-reset.prisma.repository';
 import { MAILER_PORT } from 'src/core/application/auth/ports/out.mailer.port';
-import { ConsoleMailerAdapter } from 'src/infrastructure/mailer/console-mailer.adapter';
 import { TOKEN_GENERATOR } from 'src/core/application/auth/ports/out.token-generator.port';
 import { CryptoTokenGenerator } from 'src/infrastructure/security/token-generator.adapter';
 import { ResetPasswordUseCase } from 'src/core/application/auth/use-cases/reset-password.usecase';
+import { EmailVerificationPrismaRepository } from 'src/infrastructure/persistence/prisma/email-verification.prisma.repository';
+import { EMAIL_VERIF_REPO } from 'src/core/application/auth/ports/out.email-verification-repo.port';
+// import { VerificationMailerAdapter } from 'src/infrastructure/mailer/verification-mailer.adapter';
+import { EmailAdapter } from 'src/infrastructure/mailer/email.adapter';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { AuthVerifyController } from 'src/infrastructure/http/auth.verify.controller';
+import { RequestEmailVerificationUseCase } from 'src/core/application/auth/use-cases/request-email-verification.usecase';
+import { ResendEmailVerificationUseCase } from 'src/core/application/auth/use-cases/resend-email-verification.usecase';
+import { VerifyEmailUseCase } from 'src/core/application/auth/use-cases/verify-email.usecase';
+import { join } from 'path';
+import { existsSync } from 'fs';
+
+const templateDirCandidates = [
+  join(__dirname, '..', 'infrastructure', 'mailer', 'templates'),
+  join(process.cwd(), 'dist', 'src', 'infrastructure', 'mailer', 'templates'),
+  join(process.cwd(), 'dist', 'infrastructure', 'mailer', 'templates'),
+  join(process.cwd(), 'src', 'infrastructure', 'mailer', 'templates'),
+];
+const templateDir = templateDirCandidates.find((dir) => existsSync(dir)) ?? templateDirCandidates[0];
 
 @Module({
   imports: [
@@ -24,8 +43,27 @@ import { ResetPasswordUseCase } from 'src/core/application/auth/use-cases/reset-
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '1d' },
     }),
+    MailerModule.forRoot({
+      transport: {
+        host: process.env.MAIL_HOST,   // p.ej. smtp.gmail.com
+        port: Number(process.env.MAIL_PORT ?? 587),
+        secure: false, // true si usas 465
+        auth: {
+          user: process.env.MAIL_USER,
+          pass: process.env.MAIL_PASS,
+        },
+      },
+      defaults: {
+        from: process.env.MAIL_FROM ?? '"Recomiéndame" <no-reply@recomiendameapp.cl>',
+      },
+      template: {
+        dir: templateDir,
+        adapter: new HandlebarsAdapter(),
+        options: { strict: true },
+      },
+    }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AuthVerifyController],
   providers: [
     LoginUseCase,
     RequestResetPasswordUseCase,
@@ -35,8 +73,10 @@ import { ResetPasswordUseCase } from 'src/core/application/auth/use-cases/reset-
     { provide: USER_REPOSITORY, useClass: UserPrismaRepository },
     { provide: HASH_PORT, useClass: BcryptAdapter },
     { provide: PASSWORD_RESET_REPO, useClass: PasswordResetPrismaRepository },
-    { provide: MAILER_PORT, useClass: ConsoleMailerAdapter },
     { provide: TOKEN_GENERATOR, useClass: CryptoTokenGenerator },
+    { provide: EMAIL_VERIF_REPO, useClass: EmailVerificationPrismaRepository },
+    { provide: MAILER_PORT, useClass: EmailAdapter },
+    RequestEmailVerificationUseCase, ResendEmailVerificationUseCase, VerifyEmailUseCase,
   ],
   exports: [],
 })

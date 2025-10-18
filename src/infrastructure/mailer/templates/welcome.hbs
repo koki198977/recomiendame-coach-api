@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>¡Bienvenido a Recomiéndame Coach!</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body style="margin:0;padding:0;background-color:#f0fdf4;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="margin:20px auto;padding:20px;background-color:#ffffff;border-radius:8px;border:1px solid #d1fae5;">
+          <!-- Logo -->
+          <tr>
+            <td align="center" style="padding-bottom:20px;">
+              <img src="{{logoUrl}}" alt="Recomiéndame Coach" width="150" style="display:block;height:auto;border:0;outline:none;text-decoration:none;" />
+            </td>
+          </tr>
+          <!-- Saludo -->
+          <tr>
+            <td style="font-family:Arial,Helvetica,sans-serif;text-align:center;padding-bottom:10px;">
+              <h1 style="margin:0;font-size:24px;line-height:1.25;font-weight:bold;color:#065f46;">
+                ¡Hola {{fullName}}!
+              </h1>
+            </td>
+          </tr>
+          <!-- Texto -->
+          <tr>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;text-align:center;padding:0 20px 20px;color:#065f46;">
+              Gracias por registrarte en <strong style="color:#047857;">Recomiéndame Coach</strong> 🌿<br/>
+              Para completar tu registro, haz clic en el botón de abajo:
+            </td>
+          </tr>
+          <!-- Botón -->
+          <tr>
+            <td align="center" style="padding-bottom:28px;">
+              <!-- Botón “bulletproof” básico -->
+              <a href="{{verifyUrl}}"
+                 style="background-color:#22c55e;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-family:Arial,Helvetica,sans-serif;display:inline-block;font-size:16px;border:1px solid #16a34a;">
+                Verificar mi correo
+              </a>
+            </td>
+          </tr>
+          <!-- Nota enlace alternativo -->
+          <tr>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;text-align:center;padding:0 24px 18px;color:#065f46;">
+              Si el botón no funciona, copia y pega este enlace en tu navegador:<br/>
+              <span style="word-break:break-all;color:#059669;">{{verifyUrl}}</span>
+            </td>
+          </tr>
+          <!-- Divider -->
+          <tr>
+            <td style="padding:0 24px 18px;">
+              <hr style="border:none;border-top:1px solid #d1fae5;margin:0;" />
+            </td>
+          </tr>
+          <!-- Pie -->
+          <tr>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;text-align:center;color:#047857;">
+              Si no solicitaste este correo, puedes ignorarlo.<br/>
+              © 2025 Recomiéndame Coach
+            </td>
+          </tr>
+          <!-- Sello saludable (opcional) -->
+          <tr>
+            <td align="center" style="padding-top:16px;">
+              <span style="display:inline-block;padding:6px 10px;border:1px solid #bbf7d0;border-radius:999px;background:#ecfdf5;color:#065f46;font-family:Arial,Helvetica,sans-serif;font-size:12px;">
+                Bienestar • Hábitos • Nutrición
+              </span>
+            </td>
+          </tr>
+        </table>
+        <!-- Footer background spacing -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="margin:0 auto;" aria-hidden="true">
+          <tr><td style="height:20px;line-height:20px;font-size:20px;">&nbsp;</td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
