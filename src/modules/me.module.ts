@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MeController } from '../infrastructure/http/me.controller';
 import { GetMyStatsUseCase } from '../core/application/stats/use-cases/get-my-stats.usecase';
+import { DeleteUserUseCase } from '../core/application/users/use-cases/delete-user.usecase';
 
 import { STREAK_REPOSITORY } from '../core/application/stats/ports/out.streak-repository.port';
 import { StreakPrismaRepository } from '../infrastructure/persistence/prisma/streak.prisma.repository';
@@ -19,6 +20,7 @@ import { PrismaService } from 'src/infrastructure/database/prisma.service';
   controllers: [MeController, MeMacrosController],
   providers: [
     GetMyStatsUseCase,
+    DeleteUserUseCase,
     MacrosService,
     ProfilesPrismaRepository,
     PrismaService,

@@ -110,6 +110,9 @@ model User {
 
   // Reset de contraseña
   passwordResets PasswordReset[]
+  
+  // Eliminación de cuenta
+  accountDeletions AccountDeletion[]
 }
 
 
@@ -513,6 +516,18 @@ model PasswordReset {
   id          String    @id @default(cuid())
   userId      String
   user        User      @relation(fields: [userId], references: [id])
+  tokenHash   String    @unique
+  requestedAt DateTime  @default(now())
+  expiresAt   DateTime
+  usedAt      DateTime?
+
+  @@index([userId, expiresAt])
+}
+
+model AccountDeletion {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tokenHash   String    @unique
   requestedAt DateTime  @default(now())
   expiresAt   DateTime

@@ -26,6 +26,11 @@ import { AuthVerifyController } from 'src/infrastructure/http/auth.verify.contro
 import { RequestEmailVerificationUseCase } from 'src/core/application/auth/use-cases/request-email-verification.usecase';
 import { ResendEmailVerificationUseCase } from 'src/core/application/auth/use-cases/resend-email-verification.usecase';
 import { VerifyEmailUseCase } from 'src/core/application/auth/use-cases/verify-email.usecase';
+import { RequestAccountDeletionUseCase } from 'src/core/application/auth/use-cases/request-account-deletion.usecase';
+import { ConfirmAccountDeletionUseCase } from 'src/core/application/auth/use-cases/confirm-account-deletion.usecase';
+import { ACCOUNT_DELETION_REPO } from 'src/core/application/auth/ports/out.account-deletion-repo.port';
+import { AccountDeletionPrismaRepository } from 'src/infrastructure/persistence/prisma/account-deletion.prisma.repository';
+import { AuthAccountDeletionController } from 'src/infrastructure/http/auth.account-deletion.controller';
 import { join } from 'path';
 import { existsSync } from 'fs';
 
@@ -63,7 +68,7 @@ const templateDir = templateDirCandidates.find((dir) => existsSync(dir)) ?? temp
       },
     }),
   ],
-  controllers: [AuthController, AuthVerifyController],
+  controllers: [AuthController, AuthVerifyController, AuthAccountDeletionController],
   providers: [
     LoginUseCase,
     RequestResetPasswordUseCase,
@@ -75,8 +80,10 @@ const templateDir = templateDirCandidates.find((dir) => existsSync(dir)) ?? temp
     { provide: PASSWORD_RESET_REPO, useClass: PasswordResetPrismaRepository },
     { provide: TOKEN_GENERATOR, useClass: CryptoTokenGenerator },
     { provide: EMAIL_VERIF_REPO, useClass: EmailVerificationPrismaRepository },
+    { provide: ACCOUNT_DELETION_REPO, useClass: AccountDeletionPrismaRepository },
     { provide: MAILER_PORT, useClass: EmailAdapter },
     RequestEmailVerificationUseCase, ResendEmailVerificationUseCase, VerifyEmailUseCase,
+    RequestAccountDeletionUseCase, ConfirmAccountDeletionUseCase,
   ],
   exports: [],
 })
