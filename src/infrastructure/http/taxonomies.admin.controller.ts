@@ -21,8 +21,6 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 
 @Controller('admin/taxonomies')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class TaxonomiesAdminController {
   constructor(
@@ -38,41 +36,77 @@ export class TaxonomiesAdminController {
     private createCuisineUC: CreateCuisineUC,
     private updateCuisineUC: UpdateCuisineUC,
     private deleteCuisineUC: DeleteCuisineUC,
-  ) {}
+  ) { }
 
   // Allergies
-  @Get('allergies') listAllergies(@Query() q: PageQueryDto) { return this.listAllergiesUC.execute(q); }
-  @Post('allergies') async createAllergy(@Body() dto: CreateAllergyDto) {
+  @Get('allergies')
+  listAllergies(@Query() q: PageQueryDto) { return this.listAllergiesUC.execute(q); }
+  @Post('allergies')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async createAllergy(@Body() dto: CreateAllergyDto) {
     try { return await this.createAllergyUC.execute(dto.name); } catch (e) { this.handle(e); }
   }
-  @Put('allergies/:id') async updateAllergy(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAllergyDto) {
+
+  @Put('allergies/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async updateAllergy(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAllergyDto) {
     try { return await this.updateAllergyUC.execute(id, dto.name); } catch (e) { this.handle(e); }
   }
-  @Delete('allergies/:id') async deleteAllergy(@Param('id', ParseIntPipe) id: number) {
+
+  @Delete('allergies/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async deleteAllergy(@Param('id', ParseIntPipe) id: number) {
     try { return await this.deleteAllergyUC.execute(id); } catch (e) { this.handle(e); }
   }
 
   // Conditions
-  @Get('conditions') listConditions(@Query() q: PageQueryDto) { return this.listConditionsUC.execute(q); }
-  @Post('conditions') async createCondition(@Body() dto: CreateConditionDto) {
+  @Get('conditions')
+  listConditions(@Query() q: PageQueryDto) { return this.listConditionsUC.execute(q); }
+  @Post('conditions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async createCondition(@Body() dto: CreateConditionDto) {
     try { return await this.createConditionUC.execute(dto); } catch (e) { this.handle(e); }
   }
-  @Put('conditions/:id') async updateCondition(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateConditionDto) {
+
+  @Put('conditions/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async updateCondition(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateConditionDto) {
     try { return await this.updateConditionUC.execute(id, dto); } catch (e) { this.handle(e); }
   }
-  @Delete('conditions/:id') async deleteCondition(@Param('id', ParseIntPipe) id: number) {
+
+  @Delete('conditions/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async deleteCondition(@Param('id', ParseIntPipe) id: number) {
     try { return await this.deleteConditionUC.execute(id); } catch (e) { this.handle(e); }
   }
 
   // Cuisines
-  @Get('cuisines') listCuisines(@Query() q: PageQueryDto) { return this.listCuisinesUC.execute(q); }
-  @Post('cuisines') async createCuisine(@Body() dto: CreateCuisineDto) {
+  @Get('cuisines')
+  listCuisines(@Query() q: PageQueryDto) { return this.listCuisinesUC.execute(q); }
+  @Post('cuisines')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async createCuisine(@Body() dto: CreateCuisineDto) {
     try { return await this.createCuisineUC.execute(dto.name); } catch (e) { this.handle(e); }
   }
-  @Put('cuisines/:id') async updateCuisine(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCuisineDto) {
+
+  @Put('cuisines/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async updateCuisine(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCuisineDto) {
     try { return await this.updateCuisineUC.execute(id, dto.name); } catch (e) { this.handle(e); }
   }
-  @Delete('cuisines/:id') async deleteCuisine(@Param('id', ParseIntPipe) id: number) {
+
+  @Delete('cuisines/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async deleteCuisine(@Param('id', ParseIntPipe) id: number) {
     try { return await this.deleteCuisineUC.execute(id); } catch (e) { this.handle(e); }
   }
 
