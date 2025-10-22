@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, Query, Req, UseGuards, UsePipes, Validatio
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UpsertCheckinUseCase } from '../../core/application/checkins/use-cases/upsert-checkin.usecase';
 import { ListCheckinsUseCase } from '../../core/application/checkins/use-cases/list-checkins.usecase';
+import { GetTodayCheckinUseCase } from '../../core/application/checkins/use-cases/get-today-checkin.usecase';
 import { UpsertCheckinDto } from '../../core/application/checkins/dto/upsert-checkin.dto';
 import { ListCheckinsDto } from '../../core/application/checkins/dto/list-checkins.dto';
 
@@ -12,6 +13,7 @@ export class CheckinsController {
   constructor(
     private readonly upsertUC: UpsertCheckinUseCase,
     private readonly listUC: ListCheckinsUseCase,
+    private readonly getTodayUC: GetTodayCheckinUseCase,
   ) {}
 
   @Post()
@@ -24,6 +26,12 @@ export class CheckinsController {
       hungerLvl: body.hungerLvl ?? null,
       notes: body.notes ?? null,
     });
+  }
+
+  @Get('today')
+  async getTodayCheckin(@Req() req: any) {
+    const userId = req.user.userId ?? req.user.sub;
+    return this.getTodayUC.execute(userId);
   }
 
   @Get()
