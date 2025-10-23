@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { POST_REPOSITORY, PostRepositoryPort, CreatePostResult, PostItem } from '../../../core/application/posts/ports/out.post-repository.port';
-import { Visibility } from '@prisma/client';
 
 @Injectable()
 export class PostPrismaRepository implements PostRepositoryPort {
@@ -97,10 +96,10 @@ export class PostPrismaRepository implements PostRepositoryPort {
     // Obtener posts públicos y de seguidores, ordenados por fecha
     const where = {
       OR: [
-        { visibility: Visibility.PUBLIC }, // Posts públicos de cualquier usuario
+        { visibility: 'PUBLIC' as const }, // Posts públicos de cualquier usuario
         { 
           AND: [
-            { visibility: Visibility.FOLLOWERS },
+            { visibility: 'FOLLOWERS' as const },
             { 
               OR: [
                 { authorId: userId }, // Mis propios posts
