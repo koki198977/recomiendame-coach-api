@@ -15,6 +15,7 @@ import { FEED_REPOSITORY } from '../core/application/feed/ports/out.feed-reposit
 import { FeedPrismaRepository } from '../infrastructure/persistence/prisma/feed.prisma.repository';
 import { GetMyPostsUseCase } from '../core/application/posts/use-cases/get-my-posts.usecase';
 import { GetPublicPostsUseCase } from '../core/application/posts/use-cases/get-public-posts.usecase';
+import { PrismaService } from '../infrastructure/database/prisma.service';
 
 @Module({
   controllers: [PostsController],
@@ -31,6 +32,7 @@ import { GetPublicPostsUseCase } from '../core/application/posts/use-cases/get-p
     { provide: FEED_REPOSITORY, useClass: FeedPrismaRepository },
     GetMyPostsUseCase,
     GetPublicPostsUseCase,
+    PrismaService,
   ],
 })
 export class PostsModule {}

@@ -22,7 +22,7 @@ export class PostPrismaRepository implements PostRepositoryPort {
           caption: input.caption ?? null,
           challengeId: input.challengeId ?? null,
           mediaId: mediaId ?? null,
-          visibility: 'FOLLOWERS', // default segura
+          visibility: 'PUBLIC', // default pública para que todos puedan ver
         },
         select: { id: true, createdAt: true },
       });
@@ -93,25 +93,21 @@ export class PostPrismaRepository implements PostRepositoryPort {
   }
 
   async getPublicPosts(userId: string, params: { skip: number; take: number }) {
-    // Obtener posts públicos y de seguidores, ordenados por fecha
+    // Consulta simplificada: todos los posts públicos + mis posts con cualquier visibilidad
     const where = {
       OR: [
         { visibility: 'PUBLIC' as const }, // Posts públicos de cualquier usuario
+        { authorId: userId }, // Mis propios posts (cualquier visibilidad)
         { 
           AND: [
             { visibility: 'FOLLOWERS' as const },
             { 
-              OR: [
-                { authorId: userId }, // Mis propios posts
-                { 
-                  author: {
-                    followers: { some: { followerId: userId } }
-                  }
-                } // Posts de usuarios que sigo
-              ]
+              author: {
+                followers: { some: { followerId: userId } }
+              }
             }
           ]
-        }
+        } // Posts de usuarios que sigo con visibilidad FOLLOWERS
       ]
     };
 

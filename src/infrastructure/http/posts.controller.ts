@@ -25,6 +25,7 @@ import { GetMyFeedUseCase } from '../../core/application/feed/use-cases/get-my-f
 import { GetFeedDto } from '../../core/application/feed/dto/get-feed.dto';
 import { GetMyPostsUseCase } from '../../core/application/posts/use-cases/get-my-posts.usecase';
 import { GetPublicPostsUseCase } from '../../core/application/posts/use-cases/get-public-posts.usecase';
+import { PrismaService } from '../database/prisma.service';
 
 @Controller('posts')
 @UseGuards(JwtAuthGuard)
@@ -40,6 +41,7 @@ export class PostsController {
     private readonly getFeed: GetMyFeedUseCase,
     private readonly getMyPosts: GetMyPostsUseCase,
     private readonly getPublicPosts: GetPublicPostsUseCase,
+    private readonly prisma: PrismaService,
   ) {}
 
   // Listar posts públicos y de usuarios que sigo
@@ -47,6 +49,41 @@ export class PostsController {
   async listPosts(@Query() q: GetFeedDto, @Req() req: any) {
     const userId = req.user.userId;
     return this.getPublicPosts.execute(userId, { skip: q.skip, take: q.take });
+  }
+
+  // Endpoint temporal para debuggear - ver TODOS los posts
+  @Get('debug/all')
+  async debugAllPosts(@Query() q: GetFeedDto, @Req() req: any) {
+    const userId = req.user.userId;
+
+    // Consulta simple: todos los posts sin filtros
+    const posts = await this.prisma.post.findMany({
+      skip: q.skip,
+      take: q.take,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        author: { select: { id: true, email: true } },
+        media: { select: { url: true } },
+        _count: { select: { likes: true, comments: true } },
+        likes: { where: { userId }, select: { userId: true } },
+      },
+    });
+
+    const items = posts.map((p) => ({
+      id: p.id,
+      caption: p.caption,
+      createdAt: p.createdAt,
+      authorId: p.authorId,
+      authorName: p.author.email,
+      mediaUrl: p.media?.url || null,
+      likesCount: p._count.likes,
+      commentsCount: p._count.comments,
+      isLikedByMe: p.likes.length > 0,
+      challengeId: p.challengeId,
+      visibility: p.visibility, // Incluimos la visibilidad para debuggear
+    }));
+
+    return { items, total: items.length };
   }
 
   // Feed personalizado (solo usuarios que sigo)
