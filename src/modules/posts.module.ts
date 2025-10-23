@@ -10,6 +10,10 @@ import { DeleteCommentUseCase } from '../core/application/posts/use-cases/delete
 import { ListCommentsUseCase } from '../core/application/posts/use-cases/list-comments.usecase';
 import { COMMENT_REPOSITORY } from '../core/application/posts/ports/out.comment-repository.port';
 import { CommentPrismaRepository } from '../infrastructure/persistence/prisma/comment.prisma.repository';
+import { GetMyFeedUseCase } from '../core/application/feed/use-cases/get-my-feed.usecase';
+import { FEED_REPOSITORY } from '../core/application/feed/ports/out.feed-repository.port';
+import { FeedPrismaRepository } from '../infrastructure/persistence/prisma/feed.prisma.repository';
+import { GetMyPostsUseCase } from '../core/application/posts/use-cases/get-my-posts.usecase';
 
 @Module({
   controllers: [PostsController],
@@ -22,6 +26,9 @@ import { CommentPrismaRepository } from '../infrastructure/persistence/prisma/co
     DeleteCommentUseCase,
     ListCommentsUseCase,
     { provide: COMMENT_REPOSITORY, useClass: CommentPrismaRepository },
+    GetMyFeedUseCase,
+    { provide: FEED_REPOSITORY, useClass: FeedPrismaRepository },
+    GetMyPostsUseCase,
   ],
 })
 export class PostsModule {}

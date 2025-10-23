@@ -1,4 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Post as PostMethod, Query, Req, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post as PostMethod,
+  Query,
+  Req,
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreatePostUseCase } from '../../core/application/posts/use-cases/create-post.usecase';
 import { LikePostUseCase } from '../../core/application/posts/use-cases/like-post.usecase';
@@ -9,6 +21,9 @@ import { DeleteCommentUseCase } from '../../core/application/posts/use-cases/del
 import { ListCommentsUseCase } from '../../core/application/posts/use-cases/list-comments.usecase';
 import { CreateCommentDto } from '../../core/application/posts/dto/create-comment.dto';
 import { ListCommentsDto } from '../../core/application/posts/dto/list-comments.dto';
+import { GetMyFeedUseCase } from '../../core/application/feed/use-cases/get-my-feed.usecase';
+import { GetFeedDto } from '../../core/application/feed/dto/get-feed.dto';
+import { GetMyPostsUseCase } from '../../core/application/posts/use-cases/get-my-posts.usecase';
 
 @Controller('posts')
 @UseGuards(JwtAuthGuard)
@@ -21,7 +36,32 @@ export class PostsController {
     private readonly createComment: CreateCommentUseCase,
     private readonly deleteComment: DeleteCommentUseCase,
     private readonly listComments: ListCommentsUseCase,
+    private readonly getFeed: GetMyFeedUseCase,
+    private readonly getMyPosts: GetMyPostsUseCase,
   ) {}
+
+  // Listar posts del feed (posts de usuarios que sigo)
+  @Get()
+  async listPosts(@Query() q: GetFeedDto, @Req() req: any) {
+    const userId = req.user.userId;
+    return this.getFeed.execute(userId, q);
+  }
+
+  // Listar MIS posts
+  @Get('me')
+  async listMyPosts(
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+    @Query('date') date?: string,
+    @Req() req?: any,
+  ) {
+    const userId = req.user.userId;
+    return this.getMyPosts.execute(userId, {
+      skip: skip ? Number(skip) : 0,
+      take: take ? Number(take) : 20,
+      date,
+    });
+  }
 
   @PostMethod()
   create(@Body() dto: CreatePostDto, @Req() req: any) {
@@ -39,7 +79,11 @@ export class PostsController {
   }
 
   @PostMethod(':id/comments')
-  addComment(@Param('id') postId: string, @Body() dto: CreateCommentDto, @Req() req: any) {
+  addComment(
+    @Param('id') postId: string,
+    @Body() dto: CreateCommentDto,
+    @Req() req: any,
+  ) {
     return this.createComment.execute(req.user.userId, postId, dto);
   }
 
