@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { POST_REPOSITORY, PostRepositoryPort, CreatePostResult, PostItem } from '../../../core/application/posts/ports/out.post-repository.port';
+import { Visibility } from '@prisma/client';
 
 @Injectable()
 export class PostPrismaRepository implements PostRepositoryPort {
@@ -82,6 +83,67 @@ export class PostPrismaRepository implements PostRepositoryPort {
       createdAt: p.createdAt,
       authorId: p.authorId,
       authorName: p.author.profile?.userId || p.authorId, // Fallback al ID si no hay perfil
+      mediaUrl: p.media?.url || null,
+      likesCount: p._count.likes,
+      commentsCount: p._count.comments,
+      isLikedByMe: p.likes.length > 0,
+      challengeId: p.challengeId,
+    }));
+
+    return { items, total };
+  }
+
+  async getPublicPosts(userId: string, params: { skip: number; take: number }) {
+    // Obtener posts públicos y de seguidores, ordenados por fecha
+    const where = {
+      OR: [
+        { visibility: Visibility.PUBLIC }, // Posts públicos de cualquier usuario
+        { 
+          AND: [
+            { visibility: Visibility.FOLLOWERS },
+            { 
+              OR: [
+                { authorId: userId }, // Mis propios posts
+                { 
+                  author: {
+                    followers: { some: { followerId: userId } }
+                  }
+                } // Posts de usuarios que sigo
+              ]
+            }
+          ]
+        }
+      ]
+    };
+
+    const [posts, total] = await Promise.all([
+      this.prisma.post.findMany({
+        where,
+        skip: params.skip,
+        take: params.take,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          author: { 
+            select: { 
+              id: true, 
+              email: true,
+              profile: { select: { userId: true } }
+            } 
+          },
+          media: { select: { url: true } },
+          _count: { select: { likes: true, comments: true } },
+          likes: { where: { userId }, select: { userId: true } },
+        },
+      }),
+      this.prisma.post.count({ where }),
+    ]);
+
+    const items = posts.map(p => ({
+      id: p.id,
+      caption: p.caption,
+      createdAt: p.createdAt,
+      authorId: p.authorId,
+      authorName: p.author.email, // Usamos email como nombre por ahora
       mediaUrl: p.media?.url || null,
       likesCount: p._count.likes,
       commentsCount: p._count.comments,

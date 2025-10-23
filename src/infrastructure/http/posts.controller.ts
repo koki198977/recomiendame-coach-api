@@ -24,6 +24,7 @@ import { ListCommentsDto } from '../../core/application/posts/dto/list-comments.
 import { GetMyFeedUseCase } from '../../core/application/feed/use-cases/get-my-feed.usecase';
 import { GetFeedDto } from '../../core/application/feed/dto/get-feed.dto';
 import { GetMyPostsUseCase } from '../../core/application/posts/use-cases/get-my-posts.usecase';
+import { GetPublicPostsUseCase } from '../../core/application/posts/use-cases/get-public-posts.usecase';
 
 @Controller('posts')
 @UseGuards(JwtAuthGuard)
@@ -38,11 +39,19 @@ export class PostsController {
     private readonly listComments: ListCommentsUseCase,
     private readonly getFeed: GetMyFeedUseCase,
     private readonly getMyPosts: GetMyPostsUseCase,
+    private readonly getPublicPosts: GetPublicPostsUseCase,
   ) {}
 
-  // Listar posts del feed (posts de usuarios que sigo)
+  // Listar posts públicos y de usuarios que sigo
   @Get()
   async listPosts(@Query() q: GetFeedDto, @Req() req: any) {
+    const userId = req.user.userId;
+    return this.getPublicPosts.execute(userId, { skip: q.skip, take: q.take });
+  }
+
+  // Feed personalizado (solo usuarios que sigo)
+  @Get('following')
+  async getFollowingFeed(@Query() q: GetFeedDto, @Req() req: any) {
     const userId = req.user.userId;
     return this.getFeed.execute(userId, q);
   }
