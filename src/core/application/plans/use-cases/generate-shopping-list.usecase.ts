@@ -18,28 +18,45 @@ export class GenerateShoppingListUseCase {
     const plan = await this.plans.findById(planId);
     if (!plan) throw new NotFoundException('Plan no encontrado');
 
-    // Aggregate
-    const bucket = new Map<string, Item & { qty: number }>();
+    // Aggregate - Agrupamos por nombre y unidad, sumando cantidades
+    const bucket = new Map<string, Item & { qty: number; originalName: string; originalUnit?: string }>();
     for (const day of plan.days) {
       for (const meal of day.meals) {
         for (const ing of meal.ingredients ?? []) {
           const k = keyOf(ing.name, ing.unit);
           if (!bucket.has(k)) {
-            bucket.set(k, { name: normalize(ing.name), unit: normalize(ing.unit) || undefined, qty: 0, category: ing.category ?? undefined });
+            bucket.set(k, { 
+              name: normalize(ing.name), 
+              originalName: ing.name, // Guardamos el nombre original
+              unit: normalize(ing.unit) || undefined, 
+              originalUnit: ing.unit, // Guardamos la unidad original
+              qty: 0, 
+              category: ing.category ?? undefined 
+            });
           }
           const row = bucket.get(k)!;
           row.qty += Number(ing.qty ?? 0);
-          if (!row.category && ing.category) row.category = ing.category;
+          // Mantenemos el nombre original más legible si no lo tenemos
+          if (!row.originalName || row.originalName.length < ing.name.length) {
+            row.originalName = ing.name;
+          }
+          if (!row.originalUnit && ing.unit) {
+            row.originalUnit = ing.unit;
+          }
+          if (!row.category && ing.category) {
+            row.category = ing.category;
+          }
         }
       }
     }
 
-    // Orden estable
+    // Orden estable - Usamos los nombres originales para mejor legibilidad
     const itemsAll = Array.from(bucket.values())
+      .filter(i => i.qty > 0) // Solo incluimos items con cantidad > 0
       .map(i => ({
-        name: i.name.replace(/\b\w/g, c => c.toUpperCase()),
-        unit: i.unit,
-        qty: i.qty || undefined,
+        name: i.originalName, // Usamos el nombre original
+        unit: i.originalUnit, // Usamos la unidad original
+        qty: Math.round(i.qty * 100) / 100, // Redondeamos a 2 decimales
         category: i.category ?? undefined,
       }))
       .sort((a, b) => (a.category ?? '').localeCompare(b.category ?? '')
