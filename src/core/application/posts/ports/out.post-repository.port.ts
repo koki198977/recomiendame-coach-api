@@ -14,6 +14,7 @@ export interface PostItem {
   commentsCount: number;
   isLikedByMe: boolean;
   challengeId?: string | null;
+  isAuthorFollowedByMe?: boolean;
 }
 
 export interface PostRepositoryPort {

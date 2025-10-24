@@ -67,7 +67,17 @@ export class PostPrismaRepository implements PostRepositoryPort {
         take: params.take,
         orderBy: { createdAt: 'desc' },
         include: {
-          author: { select: { id: true, profile: { select: { userId: true } } } },
+          author: { 
+            select: { 
+              id: true, 
+              profile: { select: { userId: true } },
+              // Verificar si sigo al autor del post
+              followers: {
+                where: { followerId: userId },
+                select: { followerId: true },
+              },
+            } 
+          },
           media: { select: { url: true } },
           _count: { select: { likes: true, comments: true } },
           likes: { where: { userId }, select: { userId: true } },
@@ -87,6 +97,7 @@ export class PostPrismaRepository implements PostRepositoryPort {
       commentsCount: p._count.comments,
       isLikedByMe: p.likes.length > 0,
       challengeId: p.challengeId,
+      isAuthorFollowedByMe: p.authorId === userId ? undefined : p.author.followers.length > 0, // No mostrar para mis propios posts
     }));
 
     return { items, total };
@@ -122,7 +133,12 @@ export class PostPrismaRepository implements PostRepositoryPort {
             select: { 
               id: true, 
               email: true,
-              profile: { select: { userId: true } }
+              profile: { select: { userId: true } },
+              // Verificar si sigo al autor del post
+              followers: {
+                where: { followerId: userId },
+                select: { followerId: true },
+              },
             } 
           },
           media: { select: { url: true } },
@@ -144,6 +160,7 @@ export class PostPrismaRepository implements PostRepositoryPort {
       commentsCount: p._count.comments,
       isLikedByMe: p.likes.length > 0,
       challengeId: p.challengeId,
+      isAuthorFollowedByMe: p.authorId === userId ? undefined : p.author.followers.length > 0, // No mostrar para mis propios posts
     }));
 
     return { items, total };
