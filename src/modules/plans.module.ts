@@ -19,6 +19,7 @@ import { GenerateShoppingListUseCase } from 'src/core/application/plans/use-case
 import { PROFILE_REPO } from 'src/core/application/profile/ports/out.profile-repo.port';
 import { ProfilesPrismaRepository } from 'src/infrastructure/persistence/prisma/profiles.prisma.repository';
 import { MacrosService } from 'src/core/application/plans/services/macros.service';
+import { UnitConverterService } from 'src/core/application/plans/services/unit-converter.service';
 
 @Module({
   imports: [PrismaModule],
@@ -32,6 +33,7 @@ import { MacrosService } from 'src/core/application/plans/services/macros.servic
     GetShoppingListUseCase,
     GenerateShoppingListUseCase,
     MacrosService,
+    UnitConverterService,
     { provide: PLAN_REPOSITORY, useClass: PlanPrismaRepository },
     { provide: MEAL_PLANNER_AGENT, useClass: OpenAIMealPlannerAgent }, 
     //{ provide: MEAL_PLANNER_AGENT, useClass: FakeMealPlannerAgent },

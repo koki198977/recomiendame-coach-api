@@ -1,15 +1,18 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PLAN_REPOSITORY, PlanRepositoryPort } from '../ports/out.plan-repository.port';
+import { UnitConverterService } from '../services/unit-converter.service';
 
 type Item = { name: string; unit?: string; qty?: number; category?: string };
 
 // Helpers
 const normalize = (s?: string) => (s ?? '').trim().toLowerCase();
-const keyOf = (name: string, unit?: string) => `${normalize(name)}__${normalize(unit)}`;
 
 @Injectable()
 export class GenerateShoppingListUseCase {
-  constructor(@Inject(PLAN_REPOSITORY) private readonly plans: PlanRepositoryPort) {}
+  constructor(
+    @Inject(PLAN_REPOSITORY) private readonly plans: PlanRepositoryPort,
+    private readonly unitConverter: UnitConverterService,
+  ) {}
 
   async execute(planId: string, opts?: { take?: number; cursor?: string }) {
     const take = Math.min(Math.max(opts?.take ?? 100, 1), 500); // [1..500]
@@ -18,44 +21,94 @@ export class GenerateShoppingListUseCase {
     const plan = await this.plans.findById(planId);
     if (!plan) throw new NotFoundException('Plan no encontrado');
 
-    // Aggregate - Agrupamos por nombre y unidad, sumando cantidades
-    const bucket = new Map<string, Item & { qty: number; originalName: string; originalUnit?: string }>();
+    // Paso 1: Recopilar todos los ingredientes por nombre
+    const ingredientGroups = new Map<string, Array<{ name: string; unit?: string; qty: number; category?: string }>>();
+    
     for (const day of plan.days) {
       for (const meal of day.meals) {
         for (const ing of meal.ingredients ?? []) {
-          const k = keyOf(ing.name, ing.unit);
-          if (!bucket.has(k)) {
-            bucket.set(k, { 
-              name: normalize(ing.name), 
-              originalName: ing.name, // Guardamos el nombre original
-              unit: normalize(ing.unit) || undefined, 
-              originalUnit: ing.unit, // Guardamos la unidad original
-              qty: 0, 
-              category: ing.category ?? undefined 
-            });
+          const normalizedName = normalize(ing.name);
+          if (!ingredientGroups.has(normalizedName)) {
+            ingredientGroups.set(normalizedName, []);
           }
-          const row = bucket.get(k)!;
-          row.qty += Number(ing.qty ?? 0);
-          // Mantenemos el nombre original más legible si no lo tenemos
-          if (!row.originalName || row.originalName.length < ing.name.length) {
-            row.originalName = ing.name;
-          }
-          if (!row.originalUnit && ing.unit) {
-            row.originalUnit = ing.unit;
-          }
-          if (!row.category && ing.category) {
-            row.category = ing.category;
-          }
+          ingredientGroups.get(normalizedName)!.push({
+            name: ing.name,
+            unit: ing.unit,
+            qty: Number(ing.qty ?? 0),
+            category: ing.category,
+          });
         }
       }
     }
 
-    // Orden estable - Usamos los nombres originales para mejor legibilidad
-    const itemsAll = Array.from(bucket.values())
+    // Paso 2: Consolidar cada grupo de ingredientes con conversión de unidades
+    const consolidatedItems: Array<Item & { qty: number }> = [];
+    
+    for (const [normalizedName, ingredients] of ingredientGroups) {
+      // Obtener todas las unidades únicas para este ingrediente
+      const units = [...new Set(ingredients.map(i => i.unit).filter(Boolean))] as string[];
+      
+      if (units.length <= 1) {
+        // Solo una unidad o sin unidad, agregar directamente
+        const totalQty = ingredients.reduce((sum, ing) => sum + ing.qty, 0);
+        const bestIngredient = ingredients.reduce((best, current) => 
+          current.name.length > best.name.length ? current : best
+        );
+        
+        consolidatedItems.push({
+          name: bestIngredient.name,
+          unit: bestIngredient.unit,
+          qty: totalQty,
+          category: ingredients.find(i => i.category)?.category,
+        });
+      } else {
+        // Múltiples unidades, intentar convertir
+        const preferredUnit = this.unitConverter.getPreferredUnit(normalizedName, units);
+        let totalQty = 0;
+        let hasConversions = false;
+        
+        for (const ing of ingredients) {
+          if (!ing.unit || ing.unit === preferredUnit) {
+            totalQty += ing.qty;
+          } else {
+            const converted = this.unitConverter.convert(ing.qty, ing.unit, preferredUnit, normalizedName);
+            if (converted !== null) {
+              totalQty += converted;
+              hasConversions = true;
+            } else {
+              // No se puede convertir, crear entrada separada
+              const bestIngredient = ingredients.find(i => i.unit === ing.unit) || ing;
+              consolidatedItems.push({
+                name: bestIngredient.name,
+                unit: ing.unit,
+                qty: ing.qty,
+                category: ing.category,
+              });
+            }
+          }
+        }
+        
+        if (totalQty > 0) {
+          const bestIngredient = ingredients.reduce((best, current) => 
+            current.name.length > best.name.length ? current : best
+          );
+          
+          consolidatedItems.push({
+            name: bestIngredient.name,
+            unit: preferredUnit,
+            qty: totalQty,
+            category: ingredients.find(i => i.category)?.category,
+          });
+        }
+      }
+    }
+
+    // Paso 3: Filtrar, formatear y ordenar
+    const itemsAll = consolidatedItems
       .filter(i => i.qty > 0) // Solo incluimos items con cantidad > 0
       .map(i => ({
-        name: i.originalName, // Usamos el nombre original
-        unit: i.originalUnit, // Usamos la unidad original
+        name: i.name,
+        unit: i.unit,
         qty: Math.round(i.qty * 100) / 100, // Redondeamos a 2 decimales
         category: i.category ?? undefined,
       }))
