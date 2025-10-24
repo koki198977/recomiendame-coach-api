@@ -1,4 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { CreateUserUseCase } from '../../core/application/users/use-cases/create-user.usecase';
 import { ListUsersUseCase } from '../../core/application/users/use-cases/list-users.usecase';
 import { GetUserUseCase } from '../../core/application/users/use-cases/get-user.usecase';
@@ -55,10 +67,14 @@ export class UsersController {
     @Query('take') take?: string,
   ) {
     const viewerId = req.user.userId;
-    return this.searchUsers.execute(query, {
-      skip: skip ? Number(skip) : 0,
-      take: take ? Number(take) : 20,
-    }, viewerId);
+    return this.searchUsers.execute(
+      query,
+      {
+        skip: skip ? Number(skip) : 0,
+        take: take ? Number(take) : 20,
+      },
+      viewerId,
+    );
   }
 
   // Usuarios sugeridos
@@ -76,34 +92,42 @@ export class UsersController {
     });
   }
 
-  // Debug endpoint temporal para verificar follows
-  @Get('debug/follows')
+  // Debug endpoint para verificar un usuario específico
+  @Get('debug/check/:targetUserId')
   @UseGuards(JwtAuthGuard)
-  async debugFollows(@Req() req: any) {
+  async debugCheckUser(
+    @Param('targetUserId') targetUserId: string,
+    @Req() req: any,
+  ) {
     const userId = req.user.userId;
-    
-    // Obtener todos los follows donde yo soy el follower (usuarios que YO sigo)
-    const following = await this.prisma.follow.findMany({
-      where: { followerId: userId },
-      include: {
-        following: { select: { id: true, email: true } }
-      }
+
+    // Verificar directamente en la tabla Follow
+    const followRecord = await this.prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: userId,
+          followingId: targetUserId,
+        },
+      },
     });
 
-    // Obtener todos los follows donde yo soy el following (usuarios que ME siguen)
-    const followers = await this.prisma.follow.findMany({
-      where: { followingId: userId },
+    // Consulta como en getSuggestedUsers
+    const user = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
       include: {
-        follower: { select: { id: true, email: true } }
-      }
+        followers: {
+          where: { followerId: userId },
+          select: { followerId: true },
+        },
+      },
     });
 
     return {
       myId: userId,
-      iFollow: following.map(f => ({ id: f.following.id, email: f.following.email })),
-      followMe: followers.map(f => ({ id: f.follower.id, email: f.follower.email })),
-      iFollowCount: following.length,
-      followMeCount: followers.length,
+      targetUserId,
+      directFollowCheck: !!followRecord,
+      prismaQueryResult: user?.followers || [],
+      isFollowedByMeFromQuery: (user?.followers?.length || 0) > 0,
     };
   }
 
@@ -161,7 +185,10 @@ export class UsersController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  async delete(@Param('id') id: string, @Body() dto?: { confirmation?: string }) {
+  async delete(
+    @Param('id') id: string,
+    @Body() dto?: { confirmation?: string },
+  ) {
     return this.deleteUser.execute(id, dto?.confirmation);
   }
 }

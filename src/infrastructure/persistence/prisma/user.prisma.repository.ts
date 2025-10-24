@@ -233,10 +233,20 @@ export class UserPrismaRepository implements UserRepositoryPort {
     userId: string,
     params: { skip: number; take: number },
   ): Promise<{ items: UserProfile[]; total: number }> {
-    // Obtener todos los usuarios excepto yo mismo
+    // Primero obtener los IDs de usuarios que YO sigo
+    const followingIds = await this.prisma.follow.findMany({
+      where: { followerId: userId },
+      select: { followingId: true },
+    });
+    const followingUserIds = followingIds.map(f => f.followingId);
+
+    // Obtener usuarios que NO sigo y que no soy yo
     const users = await this.prisma.user.findMany({
       where: {
-        id: { not: userId }, // No soy yo
+        AND: [
+          { id: { not: userId } }, // No soy yo
+          { id: { notIn: followingUserIds } }, // No los sigo
+        ],
       },
       skip: params.skip,
       take: params.take,
@@ -248,12 +258,6 @@ export class UserPrismaRepository implements UserRepositoryPort {
             posts: true,
           },
         },
-        // Verificar si YO sigo a este usuario
-        // Si este usuario tiene un follower con mi ID, significa que YO lo sigo
-        followers: {
-          where: { followerId: userId },
-          select: { followerId: true },
-        },
       },
       orderBy: [
         { posts: { _count: 'desc' } }, // Usuarios con más posts primero
@@ -261,20 +265,16 @@ export class UserPrismaRepository implements UserRepositoryPort {
       ],
     });
 
-    // Filtrar y mapear los resultados
-    const items = users
-      .map((user) => ({
-        id: user.id,
-        email: user.email,
-        role: user.role as 'USER' | 'ADMIN',
-        emailVerified: user.emailVerified,
-        followersCount: user._count.following, // Intercambiado
-        followingCount: user._count.followers, // Intercambiado
-        postsCount: user._count.posts,
-        isFollowedByMe: user.followers.length > 0, // Si tiene mi followerId, lo sigo
-      }))
-      // Filtrar para mostrar solo usuarios que NO sigo (para sugerencias)
-      .filter((user) => !user.isFollowedByMe);
+    const items = users.map(user => ({
+      id: user.id,
+      email: user.email,
+      role: user.role as 'USER' | 'ADMIN',
+      emailVerified: user.emailVerified,
+      followersCount: user._count.following, // Intercambiado
+      followingCount: user._count.followers, // Intercambiado
+      postsCount: user._count.posts,
+      isFollowedByMe: false, // Por definición, estos usuarios NO los sigo
+    }));
 
     return { items, total: items.length };
   }
