@@ -62,46 +62,49 @@ export class GenerateShoppingListUseCase {
           category: ingredients.find(i => i.category)?.category,
         });
       } else {
-        // Múltiples unidades, intentar convertir
+        // Múltiples unidades, intentar convertir todo a la unidad preferida
         const preferredUnit = this.unitConverter.getPreferredUnit(normalizedName, units);
-        let totalQty = 0;
-        let hasConversions = false;
+        let totalConverted = 0;
+        const unconvertedByUnit = new Map<string, number>();
         
+        // Intentar convertir cada ingrediente
         for (const ing of ingredients) {
           if (!ing.unit || ing.unit === preferredUnit) {
-            totalQty += ing.qty;
+            // Ya está en la unidad preferida
+            totalConverted += ing.qty;
           } else {
+            // Intentar convertir
             const converted = this.unitConverter.convert(ing.qty, ing.unit, preferredUnit, normalizedName);
             if (converted !== null) {
-              totalQty += converted;
-              hasConversions = true;
+              totalConverted += converted;
             } else {
-              // No se puede convertir, crear entrada separada
-              const sameUnitIngredients = ingredients.filter(i => i.unit === ing.unit);
-              const bestName = this.unitConverter.getBestDisplayName(sameUnitIngredients.map(i => i.name));
-              const totalSameUnit = sameUnitIngredients.reduce((sum, i) => sum + i.qty, 0);
-              
-              // Solo agregar si no hemos procesado esta unidad antes
-              if (!consolidatedItems.some(item => item.name === bestName && item.unit === ing.unit)) {
-                consolidatedItems.push({
-                  name: bestName,
-                  unit: ing.unit,
-                  qty: totalSameUnit,
-                  category: ing.category,
-                });
-              }
+              // No se puede convertir, acumular por unidad
+              const currentQty = unconvertedByUnit.get(ing.unit) || 0;
+              unconvertedByUnit.set(ing.unit, currentQty + ing.qty);
             }
           }
         }
         
-        if (totalQty > 0) {
-          const bestName = this.unitConverter.getBestDisplayName(ingredients.map(i => i.name));
-          
+        const bestName = this.unitConverter.getBestDisplayName(ingredients.map(i => i.name));
+        const category = ingredients.find(i => i.category)?.category;
+        
+        // Agregar el item convertido si hay cantidad
+        if (totalConverted > 0) {
           consolidatedItems.push({
             name: bestName,
             unit: preferredUnit,
-            qty: totalQty,
-            category: ingredients.find(i => i.category)?.category,
+            qty: totalConverted,
+            category,
+          });
+        }
+        
+        // Agregar items no convertidos por unidad
+        for (const [unit, qty] of unconvertedByUnit) {
+          consolidatedItems.push({
+            name: bestName,
+            unit,
+            qty,
+            category,
           });
         }
       }

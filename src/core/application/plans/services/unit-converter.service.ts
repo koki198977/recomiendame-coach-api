@@ -131,6 +131,10 @@ export class UnitConverterService {
     // Chile poblano: 1 unidad ≈ 80g
     { from: 'unidad', to: 'g', factor: 80, ingredientPattern: /chile.*poblano/i },
     { from: 'pieza', to: 'g', factor: 80, ingredientPattern: /chile.*poblano/i },
+    
+    // Zanahoria: 1 unidad mediana ≈ 100g
+    { from: 'unidad', to: 'g', factor: 100, ingredientPattern: /zanahoria/i },
+    { from: 'pieza', to: 'g', factor: 100, ingredientPattern: /zanahoria/i },
   ];
 
   /**
