@@ -8,6 +8,13 @@ import { USER_REPOSITORY } from '../core/application/users/ports/out.user-reposi
 import { UserPrismaRepository } from '../infrastructure/persistence/prisma/user.prisma.repository';
 import { HASH_PORT } from '../core/application/users/ports/out.hash.port';
 import { BcryptAdapter } from '../infrastructure/crypto/bcrypt.adapter';
+import { FollowUserUseCase } from '../core/application/users/use-cases/follow-user.usecase';
+import { UnfollowUserUseCase } from '../core/application/users/use-cases/unfollow-user.usecase';
+import { SearchUsersUseCase } from '../core/application/users/use-cases/search-users.usecase';
+import { GetSuggestedUsersUseCase } from '../core/application/users/use-cases/get-suggested-users.usecase';
+import { GetUserFollowersUseCase } from '../core/application/users/use-cases/get-user-followers.usecase';
+import { GetUserFollowingUseCase } from '../core/application/users/use-cases/get-user-following.usecase';
+import { GetUserProfileUseCase } from '../core/application/users/use-cases/get-user-profile.usecase';
 
 @Module({
   controllers: [UsersController],
@@ -16,6 +23,13 @@ import { BcryptAdapter } from '../infrastructure/crypto/bcrypt.adapter';
     ListUsersUseCase,
     GetUserUseCase,
     DeleteUserUseCase,
+    FollowUserUseCase,
+    UnfollowUserUseCase,
+    SearchUsersUseCase,
+    GetSuggestedUsersUseCase,
+    GetUserFollowersUseCase,
+    GetUserFollowingUseCase,
+    GetUserProfileUseCase,
     { provide: USER_REPOSITORY, useClass: UserPrismaRepository },
     { provide: HASH_PORT, useClass: BcryptAdapter },
   ],
