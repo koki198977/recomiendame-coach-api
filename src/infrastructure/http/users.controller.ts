@@ -15,6 +15,7 @@ import { GetSuggestedUsersUseCase } from '../../core/application/users/use-cases
 import { GetUserFollowersUseCase } from '../../core/application/users/use-cases/get-user-followers.usecase';
 import { GetUserFollowingUseCase } from '../../core/application/users/use-cases/get-user-following.usecase';
 import { GetUserProfileUseCase } from '../../core/application/users/use-cases/get-user-profile.usecase';
+import { PrismaService } from '../database/prisma.service';
 
 @Controller('users')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
@@ -31,6 +32,7 @@ export class UsersController {
     private readonly getUserFollowers: GetUserFollowersUseCase,
     private readonly getUserFollowing: GetUserFollowingUseCase,
     private readonly getUserProfile: GetUserProfileUseCase,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Post()
@@ -72,6 +74,37 @@ export class UsersController {
       skip: skip ? Number(skip) : 0,
       take: take ? Number(take) : 10,
     });
+  }
+
+  // Debug endpoint temporal para verificar follows
+  @Get('debug/follows')
+  @UseGuards(JwtAuthGuard)
+  async debugFollows(@Req() req: any) {
+    const userId = req.user.userId;
+    
+    // Obtener todos los follows donde yo soy el follower (usuarios que YO sigo)
+    const following = await this.prisma.follow.findMany({
+      where: { followerId: userId },
+      include: {
+        following: { select: { id: true, email: true } }
+      }
+    });
+
+    // Obtener todos los follows donde yo soy el following (usuarios que ME siguen)
+    const followers = await this.prisma.follow.findMany({
+      where: { followingId: userId },
+      include: {
+        follower: { select: { id: true, email: true } }
+      }
+    });
+
+    return {
+      myId: userId,
+      iFollow: following.map(f => ({ id: f.following.id, email: f.following.email })),
+      followMe: followers.map(f => ({ id: f.follower.id, email: f.follower.email })),
+      iFollowCount: following.length,
+      followMeCount: followers.length,
+    };
   }
 
   @Get(':id')

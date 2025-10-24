@@ -15,6 +15,7 @@ import { GetSuggestedUsersUseCase } from '../core/application/users/use-cases/ge
 import { GetUserFollowersUseCase } from '../core/application/users/use-cases/get-user-followers.usecase';
 import { GetUserFollowingUseCase } from '../core/application/users/use-cases/get-user-following.usecase';
 import { GetUserProfileUseCase } from '../core/application/users/use-cases/get-user-profile.usecase';
+import { PrismaService } from '../infrastructure/database/prisma.service';
 
 @Module({
   controllers: [UsersController],
@@ -32,6 +33,7 @@ import { GetUserProfileUseCase } from '../core/application/users/use-cases/get-u
     GetUserProfileUseCase,
     { provide: USER_REPOSITORY, useClass: UserPrismaRepository },
     { provide: HASH_PORT, useClass: BcryptAdapter },
+    PrismaService,
   ],
 })
 export class UsersModule {}

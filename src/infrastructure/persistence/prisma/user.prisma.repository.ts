@@ -1,55 +1,97 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { USER_REPOSITORY, UserRecord, UserRepositoryPort, UserProfile } from '../../../core/application/users/ports/out.user-repository.port';
+import {
+  USER_REPOSITORY,
+  UserRecord,
+  UserRepositoryPort,
+  UserProfile,
+} from '../../../core/application/users/ports/out.user-repository.port';
 import { UserEntity } from '../../../core/domain/users/entities';
 
 @Injectable()
 export class UserPrismaRepository implements UserRepositoryPort {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: { id?: string; email: string; passwordHash: string }): Promise<UserEntity> {
+  async create(data: {
+    id?: string;
+    email: string;
+    passwordHash: string;
+  }): Promise<UserEntity> {
     const u = await this.prisma.user.create({
       data: { id: data.id, email: data.email, password: data.passwordHash },
     });
     return new UserEntity({
-      id: u.id, email: u.email, passwordHash: u.password,
-      createdAt: u.createdAt, updatedAt: u.updatedAt,
+      id: u.id,
+      email: u.email,
+      passwordHash: u.password,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
     });
   }
 
   async findByEmail(email: string): Promise<UserRecord | null> {
     const u = await this.prisma.user.findUnique({
       where: { email },
-      select: { id: true, email: true, password: true, role: true, emailVerified: true },
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        role: true,
+        emailVerified: true,
+      },
     });
     if (!u) return null;
-    return { id: u.id, email: u.email, passwordHash: u.password, role: u.role as any, emailVerified: u.emailVerified };
+    return {
+      id: u.id,
+      email: u.email,
+      passwordHash: u.password,
+      role: u.role as any,
+      emailVerified: u.emailVerified,
+    };
   }
 
   async findById(id: string): Promise<UserEntity | null> {
     const u = await this.prisma.user.findUnique({ where: { id } });
-    return u ? new UserEntity({
-      id: u.id, email: u.email, passwordHash: u.password,
-      createdAt: u.createdAt, updatedAt: u.updatedAt,
-    }) : null;
+    return u
+      ? new UserEntity({
+          id: u.id,
+          email: u.email,
+          passwordHash: u.password,
+          createdAt: u.createdAt,
+          updatedAt: u.updatedAt,
+        })
+      : null;
   }
 
   async list(params: { skip?: number; take?: number }) {
     const [items, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
-        skip: params.skip, take: params.take,
+        skip: params.skip,
+        take: params.take,
         orderBy: { createdAt: 'desc' },
-        select: { id: true, email: true, password: true, createdAt: true, updatedAt: true },
+        select: {
+          id: true,
+          email: true,
+          password: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       }),
       this.prisma.user.count(),
     ]);
 
     return {
       total,
-      items: items.map(u => new UserEntity({
-        id: u.id, email: u.email, passwordHash: u.password,
-        createdAt: u.createdAt, updatedAt: u.updatedAt,
-      })),
+      items: items.map(
+        (u) =>
+          new UserEntity({
+            id: u.id,
+            email: u.email,
+            passwordHash: u.password,
+            createdAt: u.createdAt,
+            updatedAt: u.updatedAt,
+          }),
+      ),
     };
   }
 
@@ -62,7 +104,7 @@ export class UserPrismaRepository implements UserRepositoryPort {
 
   async delete(userId: string): Promise<void> {
     await this.prisma.user.delete({
-      where: { id: userId }
+      where: { id: userId },
     });
   }
 
@@ -99,7 +141,10 @@ export class UserPrismaRepository implements UserRepositoryPort {
     return !!follow;
   }
 
-  async getUserProfile(userId: string, viewerId?: string): Promise<UserProfile | null> {
+  async getUserProfile(
+    userId: string,
+    viewerId?: string,
+  ): Promise<UserProfile | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -132,7 +177,11 @@ export class UserPrismaRepository implements UserRepositoryPort {
     };
   }
 
-  async searchUsers(query: string, params: { skip: number; take: number }, viewerId?: string): Promise<{ items: UserProfile[]; total: number }> {
+  async searchUsers(
+    query: string,
+    params: { skip: number; take: number },
+    viewerId?: string,
+  ): Promise<{ items: UserProfile[]; total: number }> {
     const where = {
       email: {
         contains: query,
@@ -154,17 +203,19 @@ export class UserPrismaRepository implements UserRepositoryPort {
             },
           },
           // Incluir información de seguimiento si hay viewerId
-          followers: viewerId ? {
-            where: { followerId: viewerId },
-            select: { followerId: true },
-          } : false,
+          followers: viewerId
+            ? {
+                where: { followerId: viewerId },
+                select: { followerId: true },
+              }
+            : false,
         },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.user.count({ where }),
     ]);
 
-    const items = users.map(user => ({
+    const items = users.map((user) => ({
       id: user.id,
       email: user.email,
       role: user.role as 'USER' | 'ADMIN',
@@ -172,26 +223,20 @@ export class UserPrismaRepository implements UserRepositoryPort {
       followersCount: user._count.following, // Intercambiado
       followingCount: user._count.followers, // Intercambiado
       postsCount: user._count.posts,
-      isFollowedByMe: viewerId ? (user.followers?.length > 0) : undefined,
+      isFollowedByMe: viewerId ? user.followers?.length > 0 : undefined,
     }));
 
     return { items, total };
   }
 
-  async getSuggestedUsers(userId: string, params: { skip: number; take: number }): Promise<{ items: UserProfile[]; total: number }> {
-    // Obtener usuarios que no sigo y que no soy yo
+  async getSuggestedUsers(
+    userId: string,
+    params: { skip: number; take: number },
+  ): Promise<{ items: UserProfile[]; total: number }> {
+    // Obtener todos los usuarios excepto yo mismo
     const users = await this.prisma.user.findMany({
       where: {
-        AND: [
-          { id: { not: userId } }, // No soy yo
-          {
-            NOT: {
-              followers: {
-                some: { followerId: userId }
-              }
-            }
-          }, // No los sigo
-        ],
+        id: { not: userId }, // No soy yo
       },
       skip: params.skip,
       take: params.take,
@@ -203,7 +248,8 @@ export class UserPrismaRepository implements UserRepositoryPort {
             posts: true,
           },
         },
-        // Incluir información de seguimiento para verificar
+        // Verificar si YO sigo a este usuario
+        // Si este usuario tiene un follower con mi ID, significa que YO lo sigo
         followers: {
           where: { followerId: userId },
           select: { followerId: true },
@@ -215,21 +261,28 @@ export class UserPrismaRepository implements UserRepositoryPort {
       ],
     });
 
-    const items = users.map(user => ({
-      id: user.id,
-      email: user.email,
-      role: user.role as 'USER' | 'ADMIN',
-      emailVerified: user.emailVerified,
-      followersCount: user._count.following, // Intercambiado
-      followingCount: user._count.followers, // Intercambiado
-      postsCount: user._count.posts,
-      isFollowedByMe: user.followers.length > 0, // Verificar si ya lo sigo
-    }));
+    // Filtrar y mapear los resultados
+    const items = users
+      .map((user) => ({
+        id: user.id,
+        email: user.email,
+        role: user.role as 'USER' | 'ADMIN',
+        emailVerified: user.emailVerified,
+        followersCount: user._count.following, // Intercambiado
+        followingCount: user._count.followers, // Intercambiado
+        postsCount: user._count.posts,
+        isFollowedByMe: user.followers.length > 0, // Si tiene mi followerId, lo sigo
+      }))
+      // Filtrar para mostrar solo usuarios que NO sigo (para sugerencias)
+      .filter((user) => !user.isFollowedByMe);
 
     return { items, total: items.length };
   }
 
-  async getUserFollowers(userId: string, params: { skip: number; take: number }): Promise<{ items: UserProfile[]; total: number }> {
+  async getUserFollowers(
+    userId: string,
+    params: { skip: number; take: number },
+  ): Promise<{ items: UserProfile[]; total: number }> {
     const [follows, total] = await Promise.all([
       this.prisma.follow.findMany({
         where: { followingId: userId },
@@ -253,7 +306,7 @@ export class UserPrismaRepository implements UserRepositoryPort {
       this.prisma.follow.count({ where: { followingId: userId } }),
     ]);
 
-    const items = follows.map(follow => ({
+    const items = follows.map((follow) => ({
       id: follow.follower.id,
       email: follow.follower.email,
       role: follow.follower.role as 'USER' | 'ADMIN',
@@ -267,7 +320,10 @@ export class UserPrismaRepository implements UserRepositoryPort {
     return { items, total };
   }
 
-  async getUserFollowing(userId: string, params: { skip: number; take: number }): Promise<{ items: UserProfile[]; total: number }> {
+  async getUserFollowing(
+    userId: string,
+    params: { skip: number; take: number },
+  ): Promise<{ items: UserProfile[]; total: number }> {
     const [follows, total] = await Promise.all([
       this.prisma.follow.findMany({
         where: { followerId: userId },
@@ -291,7 +347,7 @@ export class UserPrismaRepository implements UserRepositoryPort {
       this.prisma.follow.count({ where: { followerId: userId } }),
     ]);
 
-    const items = follows.map(follow => ({
+    const items = follows.map((follow) => ({
       id: follow.following.id,
       email: follow.following.email,
       role: follow.following.role as 'USER' | 'ADMIN',
