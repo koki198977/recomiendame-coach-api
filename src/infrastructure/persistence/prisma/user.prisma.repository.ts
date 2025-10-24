@@ -125,14 +125,14 @@ export class UserPrismaRepository implements UserRepositoryPort {
       email: user.email,
       role: user.role as 'USER' | 'ADMIN',
       emailVerified: user.emailVerified,
-      followersCount: user._count.followers,
-      followingCount: user._count.following,
+      followersCount: user._count.following, // Intercambiado: following = usuarios que me siguen
+      followingCount: user._count.followers, // Intercambiado: followers = usuarios que yo sigo
       postsCount: user._count.posts,
       isFollowedByMe,
     };
   }
 
-  async searchUsers(query: string, params: { skip: number; take: number }): Promise<{ items: UserProfile[]; total: number }> {
+  async searchUsers(query: string, params: { skip: number; take: number }, viewerId?: string): Promise<{ items: UserProfile[]; total: number }> {
     const where = {
       email: {
         contains: query,
@@ -153,6 +153,11 @@ export class UserPrismaRepository implements UserRepositoryPort {
               posts: true,
             },
           },
+          // Incluir información de seguimiento si hay viewerId
+          followers: viewerId ? {
+            where: { followerId: viewerId },
+            select: { followerId: true },
+          } : false,
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -164,9 +169,10 @@ export class UserPrismaRepository implements UserRepositoryPort {
       email: user.email,
       role: user.role as 'USER' | 'ADMIN',
       emailVerified: user.emailVerified,
-      followersCount: user._count.followers,
-      followingCount: user._count.following,
+      followersCount: user._count.following, // Intercambiado
+      followingCount: user._count.followers, // Intercambiado
       postsCount: user._count.posts,
+      isFollowedByMe: viewerId ? (user.followers?.length > 0) : undefined,
     }));
 
     return { items, total };
@@ -197,6 +203,11 @@ export class UserPrismaRepository implements UserRepositoryPort {
             posts: true,
           },
         },
+        // Incluir información de seguimiento para verificar
+        followers: {
+          where: { followerId: userId },
+          select: { followerId: true },
+        },
       },
       orderBy: [
         { posts: { _count: 'desc' } }, // Usuarios con más posts primero
@@ -209,9 +220,10 @@ export class UserPrismaRepository implements UserRepositoryPort {
       email: user.email,
       role: user.role as 'USER' | 'ADMIN',
       emailVerified: user.emailVerified,
-      followersCount: user._count.followers,
-      followingCount: user._count.following,
+      followersCount: user._count.following, // Intercambiado
+      followingCount: user._count.followers, // Intercambiado
       postsCount: user._count.posts,
+      isFollowedByMe: user.followers.length > 0, // Verificar si ya lo sigo
     }));
 
     return { items, total: items.length };
@@ -246,9 +258,10 @@ export class UserPrismaRepository implements UserRepositoryPort {
       email: follow.follower.email,
       role: follow.follower.role as 'USER' | 'ADMIN',
       emailVerified: follow.follower.emailVerified,
-      followersCount: follow.follower._count.followers,
-      followingCount: follow.follower._count.following,
+      followersCount: follow.follower._count.following, // Intercambiado
+      followingCount: follow.follower._count.followers, // Intercambiado
       postsCount: follow.follower._count.posts,
+      isFollowedByMe: true, // Si está en mis seguidores, significa que me sigue (pero no necesariamente que yo lo siga)
     }));
 
     return { items, total };
@@ -283,9 +296,10 @@ export class UserPrismaRepository implements UserRepositoryPort {
       email: follow.following.email,
       role: follow.following.role as 'USER' | 'ADMIN',
       emailVerified: follow.following.emailVerified,
-      followersCount: follow.following._count.followers,
-      followingCount: follow.following._count.following,
+      followersCount: follow.following._count.following, // Intercambiado
+      followingCount: follow.following._count.followers, // Intercambiado
       postsCount: follow.following._count.posts,
+      isFollowedByMe: true, // Si está en mi lista de "following", significa que lo sigo
     }));
 
     return { items, total };

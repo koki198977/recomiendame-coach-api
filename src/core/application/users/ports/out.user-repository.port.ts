@@ -32,7 +32,7 @@ export interface UserRepositoryPort {
   unfollowUser(followerId: string, followingId: string): Promise<void>;
   isFollowing(followerId: string, followingId: string): Promise<boolean>;
   getUserProfile(userId: string, viewerId?: string): Promise<UserProfile | null>;
-  searchUsers(query: string, params: { skip: number; take: number }): Promise<{ items: UserProfile[]; total: number }>;
+  searchUsers(query: string, params: { skip: number; take: number }, viewerId?: string): Promise<{ items: UserProfile[]; total: number }>;
   getSuggestedUsers(userId: string, params: { skip: number; take: number }): Promise<{ items: UserProfile[]; total: number }>;
   getUserFollowers(userId: string, params: { skip: number; take: number }): Promise<{ items: UserProfile[]; total: number }>;
   getUserFollowing(userId: string, params: { skip: number; take: number }): Promise<{ items: UserProfile[]; total: number }>;

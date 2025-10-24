@@ -47,14 +47,16 @@ export class UsersController {
   @Get('search')
   @UseGuards(JwtAuthGuard)
   search(
+    @Req() req: any,
     @Query('q') query: string,
     @Query('skip') skip?: string,
     @Query('take') take?: string,
   ) {
+    const viewerId = req.user.userId;
     return this.searchUsers.execute(query, {
       skip: skip ? Number(skip) : 0,
       take: take ? Number(take) : 20,
-    });
+    }, viewerId);
   }
 
   // Usuarios sugeridos
