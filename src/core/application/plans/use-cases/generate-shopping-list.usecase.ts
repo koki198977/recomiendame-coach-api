@@ -21,13 +21,14 @@ export class GenerateShoppingListUseCase {
     const plan = await this.plans.findById(planId);
     if (!plan) throw new NotFoundException('Plan no encontrado');
 
-    // Paso 1: Recopilar todos los ingredientes por nombre
+    // Paso 1: Recopilar todos los ingredientes por nombre normalizado
     const ingredientGroups = new Map<string, Array<{ name: string; unit?: string; qty: number; category?: string }>>();
     
     for (const day of plan.days) {
       for (const meal of day.meals) {
         for (const ing of meal.ingredients ?? []) {
-          const normalizedName = normalize(ing.name);
+          // Usar normalización inteligente de ingredientes
+          const normalizedName = this.unitConverter.normalizeIngredientName(ing.name);
           if (!ingredientGroups.has(normalizedName)) {
             ingredientGroups.set(normalizedName, []);
           }
@@ -51,13 +52,12 @@ export class GenerateShoppingListUseCase {
       if (units.length <= 1) {
         // Solo una unidad o sin unidad, agregar directamente
         const totalQty = ingredients.reduce((sum, ing) => sum + ing.qty, 0);
-        const bestIngredient = ingredients.reduce((best, current) => 
-          current.name.length > best.name.length ? current : best
-        );
+        const bestName = this.unitConverter.getBestDisplayName(ingredients.map(i => i.name));
+        const representativeIngredient = ingredients.find(i => i.name === bestName) || ingredients[0];
         
         consolidatedItems.push({
-          name: bestIngredient.name,
-          unit: bestIngredient.unit,
+          name: bestName,
+          unit: representativeIngredient.unit,
           qty: totalQty,
           category: ingredients.find(i => i.category)?.category,
         });
@@ -77,24 +77,28 @@ export class GenerateShoppingListUseCase {
               hasConversions = true;
             } else {
               // No se puede convertir, crear entrada separada
-              const bestIngredient = ingredients.find(i => i.unit === ing.unit) || ing;
-              consolidatedItems.push({
-                name: bestIngredient.name,
-                unit: ing.unit,
-                qty: ing.qty,
-                category: ing.category,
-              });
+              const sameUnitIngredients = ingredients.filter(i => i.unit === ing.unit);
+              const bestName = this.unitConverter.getBestDisplayName(sameUnitIngredients.map(i => i.name));
+              const totalSameUnit = sameUnitIngredients.reduce((sum, i) => sum + i.qty, 0);
+              
+              // Solo agregar si no hemos procesado esta unidad antes
+              if (!consolidatedItems.some(item => item.name === bestName && item.unit === ing.unit)) {
+                consolidatedItems.push({
+                  name: bestName,
+                  unit: ing.unit,
+                  qty: totalSameUnit,
+                  category: ing.category,
+                });
+              }
             }
           }
         }
         
         if (totalQty > 0) {
-          const bestIngredient = ingredients.reduce((best, current) => 
-            current.name.length > best.name.length ? current : best
-          );
+          const bestName = this.unitConverter.getBestDisplayName(ingredients.map(i => i.name));
           
           consolidatedItems.push({
-            name: bestIngredient.name,
+            name: bestName,
             unit: preferredUnit,
             qty: totalQty,
             category: ingredients.find(i => i.category)?.category,
