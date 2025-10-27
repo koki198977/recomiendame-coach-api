@@ -26,7 +26,7 @@ services:
       PORT: '3000'
       JWT_SECRET: "secretcoach"
       JWT_EXPIRES_IN: "1d"
-      FRONT_URL: "http://localhost:5173"
+      FRONT_URL: ${FRONT_URL}
       RESET_COOLDOWN_MINUTES: '5'
       MAIL_HOST: smtp.gmail.com
       MAIL_PORT: '587'
