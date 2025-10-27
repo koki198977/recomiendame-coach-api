@@ -31,6 +31,7 @@ import { ConfirmAccountDeletionUseCase } from 'src/core/application/auth/use-cas
 import { ACCOUNT_DELETION_REPO } from 'src/core/application/auth/ports/out.account-deletion-repo.port';
 import { AccountDeletionPrismaRepository } from 'src/infrastructure/persistence/prisma/account-deletion.prisma.repository';
 import { AuthAccountDeletionController } from 'src/infrastructure/http/auth.account-deletion.controller';
+import { AccountDeletionController } from 'src/infrastructure/http/account-deletion.controller';
 import { join } from 'path';
 import { existsSync } from 'fs';
 
@@ -68,7 +69,7 @@ const templateDir = templateDirCandidates.find((dir) => existsSync(dir)) ?? temp
       },
     }),
   ],
-  controllers: [AuthController, AuthVerifyController, AuthAccountDeletionController],
+  controllers: [AuthController, AuthVerifyController, AuthAccountDeletionController, AccountDeletionController],
   providers: [
     LoginUseCase,
     RequestResetPasswordUseCase,
