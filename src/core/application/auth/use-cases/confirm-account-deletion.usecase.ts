@@ -18,21 +18,30 @@ export class ConfirmAccountDeletionUseCase {
   ) {}
 
   async execute(dto: ConfirmAccountDeletionDto): Promise<{ message: string }> {
+    console.log('🔍 UseCase - Token recibido:', dto.token);
     const tokenHash = crypto.createHash('sha256').update(dto.token).digest('hex');
+    console.log('🔍 UseCase - Token hash:', tokenHash);
     
     // Buscar token
     const deletionRecord = await this.deletionRepo.findByToken(tokenHash);
+    console.log('🔍 UseCase - Registro encontrado:', deletionRecord);
+    
     if (!deletionRecord) {
+      console.log('❌ UseCase - Token no válido');
       throw new NotFoundException('Token de eliminación no válido');
     }
 
     // Verificar si ya fue usado
     if (deletionRecord.usedAt) {
+      console.log('❌ UseCase - Token ya usado:', deletionRecord.usedAt);
       throw new BadRequestException('Este enlace ya fue utilizado');
     }
 
     // Verificar si expiró
-    if (deletionRecord.expiresAt < new Date()) {
+    const now = new Date();
+    console.log('🔍 UseCase - Fecha actual:', now, 'Expira:', deletionRecord.expiresAt);
+    if (deletionRecord.expiresAt < now) {
+      console.log('❌ UseCase - Token expirado');
       throw new BadRequestException('El enlace de eliminación ha expirado');
     }
 
