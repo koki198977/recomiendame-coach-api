@@ -132,8 +132,8 @@ model Follow {
   followerId  String
   followingId String
   createdAt   DateTime @default(now())
-  follower    User     @relation("followers", fields: [followerId], references: [id])
-  following   User     @relation("following", fields: [followingId], references: [id])
+  follower    User     @relation("followers", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@id([followerId, followingId])
 }
@@ -150,12 +150,12 @@ model MediaAsset {
 model Post {
   id          String        @id @default(cuid())
   authorId    String
-  author      User          @relation(fields: [authorId], references: [id])
+  author      User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
   challengeId String?
-  challenge   Challenge?    @relation(fields: [challengeId], references: [id])
+  challenge   Challenge?    @relation(fields: [challengeId], references: [id], onDelete: SetNull)
   caption     String?
   mediaId     String?       @unique
-  media       MediaAsset?   @relation(fields: [mediaId], references: [id])
+  media       MediaAsset?   @relation(fields: [mediaId], references: [id], onDelete: SetNull)
   createdAt   DateTime      @default(now())
   visibility  Visibility    @default(FOLLOWERS)
   likes       PostLike[]
@@ -169,7 +169,7 @@ model PostLike {
   userId    String
   postId    String
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@id([userId, postId])
@@ -182,7 +182,7 @@ model PostComment {
   body      String
   createdAt DateTime @default(now())
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author    User     @relation(fields: [authorId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 }
 
 model ShareToken {
@@ -195,7 +195,7 @@ model ShareToken {
 
 model PrivacySettings {
   userId      String        @id
-  user        User          @relation(fields: [userId], references: [id])
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   profile     Visibility    @default(FOLLOWERS)
   posts       Visibility    @default(FOLLOWERS)
   stats       Visibility    @default(FOLLOWERS)
@@ -205,7 +205,7 @@ model PrivacySettings {
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   body      String
   read      Boolean  @default(false)
@@ -215,7 +215,7 @@ model Notification {
 model DeviceToken {
   id        String   @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   token     String   @unique
   platform  String
   createdAt DateTime @default(now())
@@ -226,7 +226,7 @@ model DeviceToken {
  */
 model UserProfile {
   userId                String           @id
-  user                  User             @relation(fields: [userId], references: [id])
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   sex                   Sex?
   birthDate             DateTime?
   heightCm              Int?
@@ -306,7 +306,7 @@ model UserCuisinePreference {
 model Goal {
   id             String    @id @default(cuid())
   userId         String
-  user           User      @relation(fields: [userId], references: [id])
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   goalType       GoalType
   targetWeightKg Decimal   @db.Decimal(5, 2)
   weeklyPaceKg   Decimal?  @db.Decimal(4, 2)
@@ -321,9 +321,9 @@ model Goal {
 model Plan {
   id         String        @id @default(cuid())
   userId     String
-  user       User          @relation(fields: [userId], references: [id])
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   goalId     String?
-  goal       Goal?         @relation(fields: [goalId], references: [id])
+  goal       Goal?         @relation(fields: [goalId], references: [id], onDelete: SetNull)
   weekStart  DateTime
   kcalTarget Int
   protein_g  Int
@@ -390,7 +390,7 @@ model GroceryItem {
 model Checkin {
   id           String   @id @default(cuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date         DateTime
   weightKg     Decimal? @db.Decimal(5, 2)
   adherencePct Int?
@@ -403,7 +403,7 @@ model Checkin {
 model HydrationLog {
   id     String   @id @default(cuid())
   userId String
-  user   User     @relation(fields: [userId], references: [id])
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date   DateTime
   ml     Int
 
@@ -413,7 +413,7 @@ model HydrationLog {
 model SleepLog {
   id      String   @id @default(cuid())
   userId  String
-  user    User     @relation(fields: [userId], references: [id])
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date    DateTime
   hours   Decimal  @db.Decimal(4, 2)
   quality Int?
@@ -424,7 +424,7 @@ model SleepLog {
 model ActivityLog {
   id      String   @id @default(cuid())
   userId  String
-  user    User     @relation(fields: [userId], references: [id])
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date    DateTime
   steps   Int?
   minutes Int?
@@ -449,8 +449,8 @@ model UserAchievement {
   userId        String
   achievementId String
   unlockedAt    DateTime    @default(now())
-  user          User        @relation(fields: [userId], references: [id])
-  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
 
   @@id([userId, achievementId])
 }
@@ -458,7 +458,7 @@ model UserAchievement {
 model PointsLedger {
   id        String   @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   delta     Int
   reason    String
   meta      Json?
@@ -469,7 +469,7 @@ model PointsLedger {
 
 model Streak {
   userId    String   @id
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   days      Int      @default(0)
   updatedAt DateTime @updatedAt
 }
@@ -477,7 +477,7 @@ model Streak {
 model Challenge {
   id          String                @id @default(cuid())
   ownerId     String?
-  owner       User?                 @relation("ChallengeOwner", fields: [ownerId], references: [id])
+  owner       User?                 @relation("ChallengeOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   title       String
   description String?
   startDate   DateTime
@@ -493,8 +493,8 @@ model ChallengeMembership {
   userId      String
   challengeId String
   joinedAt    DateTime  @default(now())
-  user        User      @relation(fields: [userId], references: [id])
-  challenge   Challenge @relation(fields: [challengeId], references: [id])
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
 
   @@id([userId, challengeId])
 }
@@ -506,8 +506,8 @@ model ChallengeProgress {
   date        DateTime
   value       Decimal?  @db.Decimal(8, 2)
   meta        Json?
-  user        User      @relation(fields: [userId], references: [id])
-  challenge   Challenge @relation(fields: [challengeId], references: [id])
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
 
   @@unique([userId, challengeId, date])
 }
@@ -515,7 +515,7 @@ model ChallengeProgress {
 model PasswordReset {
   id          String    @id @default(cuid())
   userId      String
-  user        User      @relation(fields: [userId], references: [id])
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tokenHash   String    @unique
   requestedAt DateTime  @default(now())
   expiresAt   DateTime
