@@ -34,8 +34,8 @@ export class RequestAccountDeletionUseCase {
     await this.deletionRepo.create(user.id, tokenHash, expiresAt);
 
     // Enviar email
-    const apiUrl = process.env.API_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
-    const deletionUrl = `${apiUrl}/auth/confirm-account-deletion?token=${token}`;
+    const apiUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const deletionUrl = `${apiUrl}/delete-account?token=${token}`;
     
     await this.mailer.sendEmailVerification(
       user.email,
