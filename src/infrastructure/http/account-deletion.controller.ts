@@ -15,7 +15,11 @@ export class AccountDeletionController {
     if (!token) {
       // Si no hay token, servir la página HTML
       try {
-        const htmlPath = join(process.cwd(), 'public', 'confirm-account-deletion.html');
+        const htmlPath = join(
+          process.cwd(),
+          'public',
+          'confirm-account-deletion.html',
+        );
         const html = readFileSync(htmlPath, 'utf8');
         res.setHeader('Content-Type', 'text/html');
         return res.send(html);
@@ -23,14 +27,14 @@ export class AccountDeletionController {
         return res.status(404).json({ message: 'Página no encontrada' });
       }
     }
-    
+
     // Si hay token, procesar la eliminación
     try {
       const result = await this.confirmDeletionUC.execute({ token });
       return res.json(result);
     } catch (error) {
-      return res.status(400).json({ 
-        message: error.message || 'Error al procesar la eliminación de cuenta' 
+      return res.status(400).json({
+        message: error.message || 'Error al procesar la eliminación de cuenta',
       });
     }
   }
