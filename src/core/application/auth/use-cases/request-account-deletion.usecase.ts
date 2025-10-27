@@ -1,7 +1,16 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { USER_REPOSITORY, UserRepositoryPort } from '../../users/ports/out.user-repository.port';
-import { ACCOUNT_DELETION_REPO, AccountDeletionRepoPort } from '../ports/out.account-deletion-repo.port';
-import { TOKEN_GENERATOR, TokenGeneratorPort } from '../ports/out.token-generator.port';
+import {
+  USER_REPOSITORY,
+  UserRepositoryPort,
+} from '../../users/ports/out.user-repository.port';
+import {
+  ACCOUNT_DELETION_REPO,
+  AccountDeletionRepoPort,
+} from '../ports/out.account-deletion-repo.port';
+import {
+  TOKEN_GENERATOR,
+  TokenGeneratorPort,
+} from '../ports/out.token-generator.port';
 import { MAILER_PORT, MailerPort } from '../ports/out.mailer.port';
 import { RequestAccountDeletionDto } from '../dto/request-account-deletion.dto';
 import * as crypto from 'crypto';
@@ -10,7 +19,8 @@ import * as crypto from 'crypto';
 export class RequestAccountDeletionUseCase {
   constructor(
     @Inject(USER_REPOSITORY) private userRepo: UserRepositoryPort,
-    @Inject(ACCOUNT_DELETION_REPO) private deletionRepo: AccountDeletionRepoPort,
+    @Inject(ACCOUNT_DELETION_REPO)
+    private deletionRepo: AccountDeletionRepoPort,
     @Inject(TOKEN_GENERATOR) private tokenGen: TokenGeneratorPort,
     @Inject(MAILER_PORT) private mailer: MailerPort,
   ) {}
@@ -34,9 +44,9 @@ export class RequestAccountDeletionUseCase {
     await this.deletionRepo.create(user.id, tokenHash, expiresAt);
 
     // Enviar email
-    const apiUrl = process.env.FRONT_URL || 'http://localhost:3000';
-    const deletionUrl = `${apiUrl}/delete-account?token=${token}`;
-    
+    const apiUrl = process.env.API_URL || 'http://localhost:3000';
+    const deletionUrl = `${apiUrl}/confirm-account-deletion?token=${token}`;
+
     await this.mailer.sendEmailVerification(
       user.email,
       'Confirmación de eliminación de cuenta - Recomiéndame',
@@ -44,12 +54,13 @@ export class RequestAccountDeletionUseCase {
       {
         email: user.email,
         deletionUrl,
-        expiresIn: '24 horas'
-      }
+        expiresIn: '24 horas',
+      },
     );
 
     return {
-      message: 'Se ha enviado un enlace de confirmación a tu email. El enlace expira en 24 horas.'
+      message:
+        'Se ha enviado un enlace de confirmación a tu email. El enlace expira en 24 horas.',
     };
   }
 }
