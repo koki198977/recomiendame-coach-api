@@ -55,13 +55,16 @@ export class ConfirmAccountDeletionUseCase {
       });
 
       // Enviar email de confirmación
+      const logoUrl = 'https://coach.recomiendameapp.cl/_nuxt/logo.kI-BB8D4.png';
+      
       await this.mailer.sendEmailVerification(
         user.email,
         'Cuenta eliminada exitosamente - Recomiéndame',
         'account-deleted',
         {
           email: user.email,
-          deletedAt: new Date().toLocaleString('es-ES')
+          deletedAt: new Date().toLocaleString('es-ES'),
+          logoUrl
         }
       );
 

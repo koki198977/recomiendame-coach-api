@@ -44,8 +44,9 @@ export class RequestAccountDeletionUseCase {
     await this.deletionRepo.create(user.id, tokenHash, expiresAt);
 
     // Enviar email
-    const apiUrl = process.env.FRONT_URL || 'http://localhost:3000';
-    const deletionUrl = `${apiUrl}/delete-account?token=${token}`;
+    const frontUrl = process.env.FRONT_URL || 'http://localhost:3000';
+    const deletionUrl = `${frontUrl}/delete-account?token=${token}`;
+    const logoUrl = 'https://coach.recomiendameapp.cl/_nuxt/logo.kI-BB8D4.png';
 
     await this.mailer.sendEmailVerification(
       user.email,
@@ -55,6 +56,7 @@ export class RequestAccountDeletionUseCase {
         email: user.email,
         deletionUrl,
         expiresIn: '24 horas',
+        logoUrl,
       },
     );
 
