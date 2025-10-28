@@ -1,5 +1,8 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { USER_REPOSITORY, UserRepositoryPort } from '../../users/ports/out.user-repository.port';
+import {
+  USER_REPOSITORY,
+  UserRepositoryPort,
+} from '../../users/ports/out.user-repository.port';
 import { HASH_PORT, HashPort } from '../../users/ports/out.hash.port';
 import { TOKEN_SIGNER, TokenSignerPort } from '../ports/out.token-signer.port';
 import { LoginDto } from '../dto/login.dto';
@@ -19,7 +22,22 @@ export class LoginUseCase {
     const ok = await this.hasher.compare(input.password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Credenciales inválidas');
 
-    const access_token = this.tokens.sign({ sub: user.id, email: user.email, role: user.role, emailVerified: user.emailVerified }, undefined);
+    // Verificar que el email esté confirmado
+    if (!user.emailVerified) {
+      throw new UnauthorizedException(
+        'Debes verificar tu email antes de iniciar sesión. Revisa tu correo electrónico.',
+      );
+    }
+
+    const access_token = this.tokens.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+        emailVerified: user.emailVerified,
+      },
+      undefined,
+    );
     return { access_token };
   }
 }
