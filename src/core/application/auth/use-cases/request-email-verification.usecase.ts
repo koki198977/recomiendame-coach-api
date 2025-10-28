@@ -28,7 +28,7 @@ export class RequestEmailVerificationUseCase {
     const frontUrl = this.config.get<string>('FRONT_URL', 'http://localhost:3000');
     const verifyUrl = `${frontUrl}/verify-email?token=${token}`;
     const fullName = input.fullName ?? input.email;
-    const logoUrl = `${apiUrl}/assets/logo.png`;
+    const logoUrl = `${apiUrl}/static/assets/logo.png`;
     await this.mailer.sendEmailVerification(
       input.email,
       'Confirma tu correo en Coach Recomiéndame',
