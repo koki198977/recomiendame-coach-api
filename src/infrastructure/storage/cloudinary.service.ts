@@ -14,30 +14,34 @@ export class CloudinaryService {
 
   async uploadImage(
     file: Express.Multer.File,
-    folder: string = 'posts'
+    folder: string = 'posts',
   ): Promise<{ url: string; publicId: string }> {
     return new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
-        {
-          folder,
-          resource_type: 'image',
-          transformation: [
-            { width: 1080, height: 1350, crop: 'limit' },
-            { quality: 'auto' },
-            { format: 'auto' }
-          ]
-        },
-        (error, result) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve({
-              url: result.secure_url,
-              publicId: result.public_id,
-            });
-          }
-        }
-      ).end(file.buffer);
+      cloudinary.uploader
+        .upload_stream(
+          {
+            folder,
+            resource_type: 'image',
+            transformation: [
+              { width: 1080, height: 1350, crop: 'limit' },
+              { quality: 'auto' },
+              { format: 'auto' },
+            ],
+          },
+          (error, result) => {
+            if (error) {
+              reject(error);
+            } else if (result) {
+              resolve({
+                url: result.secure_url,
+                publicId: result.public_id,
+              });
+            } else {
+              reject(new Error('Upload failed: No result returned'));
+            }
+          },
+        )
+        .end(file.buffer);
     });
   }
 
