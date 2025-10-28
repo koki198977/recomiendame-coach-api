@@ -26,7 +26,7 @@ export class RequestEmailVerificationUseCase {
     // enviar mail
     const apiUrl    = this.config.get<string>('API_URL');
     const frontUrl = this.config.get<string>('FRONT_URL', 'http://localhost:3000');
-    const verifyUrl = `${frontUrl}/auth/verify-email?token=${token}`;
+    const verifyUrl = `${frontUrl}/verify-email?token=${token}`;
     const fullName = input.fullName ?? input.email;
     const logoUrl = `${apiUrl}/static/assets/logo.png`;
     await this.mailer.sendEmailVerification(
