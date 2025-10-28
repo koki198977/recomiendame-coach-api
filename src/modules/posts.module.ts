@@ -16,8 +16,10 @@ import { FeedPrismaRepository } from '../infrastructure/persistence/prisma/feed.
 import { GetMyPostsUseCase } from '../core/application/posts/use-cases/get-my-posts.usecase';
 import { GetPublicPostsUseCase } from '../core/application/posts/use-cases/get-public-posts.usecase';
 import { PrismaService } from '../infrastructure/database/prisma.service';
+import { StorageModule } from '../infrastructure/storage/storage.module';
 
 @Module({
+  imports: [StorageModule],
   controllers: [PostsController],
   providers: [
     CreatePostUseCase,

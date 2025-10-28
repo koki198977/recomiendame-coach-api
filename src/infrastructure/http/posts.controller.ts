@@ -10,7 +10,10 @@ import {
   UseGuards,
   UsePipes,
   ValidationPipe,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreatePostUseCase } from '../../core/application/posts/use-cases/create-post.usecase';
 import { LikePostUseCase } from '../../core/application/posts/use-cases/like-post.usecase';
@@ -26,6 +29,8 @@ import { GetFeedDto } from '../../core/application/feed/dto/get-feed.dto';
 import { GetMyPostsUseCase } from '../../core/application/posts/use-cases/get-my-posts.usecase';
 import { GetPublicPostsUseCase } from '../../core/application/posts/use-cases/get-public-posts.usecase';
 import { PrismaService } from '../database/prisma.service';
+import { CloudinaryService } from '../storage/cloudinary.service';
+import { multerConfig } from '../storage/multer.config';
 
 @Controller('posts')
 @UseGuards(JwtAuthGuard)
@@ -42,6 +47,7 @@ export class PostsController {
     private readonly getMyPosts: GetMyPostsUseCase,
     private readonly getPublicPosts: GetPublicPostsUseCase,
     private readonly prisma: PrismaService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   // Listar posts públicos y de usuarios que sigo
@@ -107,6 +113,24 @@ export class PostsController {
       take: take ? Number(take) : 20,
       date,
     });
+  }
+
+  // Upload de imagen
+  @PostMethod('upload')
+  @UseInterceptors(FileInterceptor('image', multerConfig))
+  async uploadImage(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ) {
+    if (!file) {
+      throw new Error('No se proporcionó ningún archivo');
+    }
+
+    const result = await this.cloudinaryService.uploadImage(file, 'posts');
+    return {
+      url: result.url,
+      publicId: result.publicId,
+    };
   }
 
   @PostMethod()
