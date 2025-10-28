@@ -16,8 +16,49 @@ import { GetUserFollowersUseCase } from '../core/application/users/use-cases/get
 import { GetUserFollowingUseCase } from '../core/application/users/use-cases/get-user-following.usecase';
 import { GetUserProfileUseCase } from '../core/application/users/use-cases/get-user-profile.usecase';
 import { PrismaService } from '../infrastructure/database/prisma.service';
+import { RequestEmailVerificationUseCase } from '../core/application/auth/use-cases/request-email-verification.usecase';
+import { EMAIL_VERIF_REPO } from '../core/application/auth/ports/out.email-verification-repo.port';
+import { EmailVerificationPrismaRepository } from '../infrastructure/persistence/prisma/email-verification.prisma.repository';
+import { MAILER_PORT } from '../core/application/auth/ports/out.mailer.port';
+import { EmailAdapter } from '../infrastructure/mailer/email.adapter';
+import { TOKEN_GENERATOR } from '../core/application/auth/ports/out.token-generator.port';
+import { CryptoTokenGenerator } from '../infrastructure/security/token-generator.adapter';
+import { ConfigService } from '@nestjs/config';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { join } from 'path';
+import { existsSync } from 'fs';
+
+const templateDirCandidates = [
+  join(process.cwd(), 'src', 'infrastructure', 'mailer', 'templates'),
+  join(__dirname, '..', 'infrastructure', 'mailer', 'templates'),
+  join(process.cwd(), 'dist', 'src', 'infrastructure', 'mailer', 'templates'),
+  join(process.cwd(), 'dist', 'infrastructure', 'mailer', 'templates'),
+];
+const templateDir = templateDirCandidates.find((dir) => existsSync(dir)) ?? templateDirCandidates[0];
 
 @Module({
+  imports: [
+    MailerModule.forRoot({
+      transport: {
+        host: process.env.MAIL_HOST,
+        port: Number(process.env.MAIL_PORT ?? 587),
+        secure: false,
+        auth: {
+          user: process.env.MAIL_USER,
+          pass: process.env.MAIL_PASS,
+        },
+      },
+      defaults: {
+        from: process.env.MAIL_FROM ?? '"Recomiéndame" <no-reply@recomiendameapp.cl>',
+      },
+      template: {
+        dir: templateDir,
+        adapter: new HandlebarsAdapter(),
+        options: { strict: true },
+      },
+    }),
+  ],
   controllers: [UsersController],
   providers: [
     CreateUserUseCase,
@@ -31,9 +72,14 @@ import { PrismaService } from '../infrastructure/database/prisma.service';
     GetUserFollowersUseCase,
     GetUserFollowingUseCase,
     GetUserProfileUseCase,
+    RequestEmailVerificationUseCase,
     { provide: USER_REPOSITORY, useClass: UserPrismaRepository },
     { provide: HASH_PORT, useClass: BcryptAdapter },
+    { provide: EMAIL_VERIF_REPO, useClass: EmailVerificationPrismaRepository },
+    { provide: MAILER_PORT, useClass: EmailAdapter },
+    { provide: TOKEN_GENERATOR, useClass: CryptoTokenGenerator },
     PrismaService,
+    ConfigService,
   ],
 })
 export class UsersModule {}
