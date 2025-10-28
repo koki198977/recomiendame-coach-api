@@ -8,9 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Servir archivos estáticos desde la carpeta public
-  app.useStaticAssets(join(__dirname, '..', 'public'), {
-    prefix: '/static/',
-  });
+  app.useStaticAssets(join(__dirname, '..', 'public'));
 
   const prisma = app.get(PrismaService);
   await prisma.enableShutdownHooks(app);

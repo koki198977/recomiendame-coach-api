@@ -1,9 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { RequestResetDto } from '../dto/request-reset.dto';
-import { USER_REPOSITORY, UserRepositoryPort } from '../../users/ports/out.user-repository.port';
-import { PASSWORD_RESET_REPO, PasswordResetRepoPort } from '../ports/out.password-reset-repo.port';
+import {
+  USER_REPOSITORY,
+  UserRepositoryPort,
+} from '../../users/ports/out.user-repository.port';
+import {
+  PASSWORD_RESET_REPO,
+  PasswordResetRepoPort,
+} from '../ports/out.password-reset-repo.port';
 import { MAILER_PORT, MailerPort } from '../ports/out.mailer.port';
-import { TOKEN_GENERATOR, TokenGeneratorPort } from '../ports/out.token-generator.port';
+import {
+  TOKEN_GENERATOR,
+  TokenGeneratorPort,
+} from '../ports/out.token-generator.port';
 import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
 
@@ -46,13 +55,13 @@ export class RequestResetPasswordUseCase {
     await this.resets.create({ userId: user.id, tokenHash, expiresAt });
 
     // 4) enviar correo
-    const frontUrl = this.config.get<string>('FRONTEND_URL')
-      ?? this.config.get<string>('FRONT_URL')
-      ?? 'http://localhost:5173';
+    const frontUrl =
+      this.config.get<string>('FRONT_URL') ??
+      'http://localhost:5173';
     const apiUrl = this.config.get<string>('API_URL') ?? frontUrl;
     const baseFront = frontUrl.replace(/\/+$/, '');
     const resetUrl = `${baseFront}/reset-password?token=${encodeURIComponent(token)}`;
-    const logoUrl = `${apiUrl.replace(/\/+$/, '')}/static/assets/logo.png`;
+    const logoUrl = `${apiUrl.replace(/\/+$/, '')}/assets/logo.png`;
     const fullName = user.email;
     await this.mailer.sendEmailVerification(
       user.email,
@@ -61,8 +70,6 @@ export class RequestResetPasswordUseCase {
       { fullName, resetUrl, logoUrl },
     );
 
-
     return { ok: true };
   }
-
 }
