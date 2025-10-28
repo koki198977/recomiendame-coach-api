@@ -61,7 +61,7 @@ export class RequestResetPasswordUseCase {
     const apiUrl = this.config.get<string>('API_URL') ?? frontUrl;
     const baseFront = frontUrl.replace(/\/+$/, '');
     const resetUrl = `${baseFront}/reset-password?token=${encodeURIComponent(token)}`;
-    const logoUrl = 'https://coach.recomiendameapp.cl/_nuxt/logo.C7Qdxe2m.png';
+    const logoUrl = 'https://coach.recomiendameapp.cl/_nuxt/logo.kI-BB8D4.png';
     const fullName = user.email;
     await this.mailer.sendEmailVerification(
       user.email,
