@@ -7,14 +7,14 @@ import { PrismaService } from '../database/prisma.service';
 import { createHash } from 'crypto';
 
 // ─────────────────────────────────────────────────────────────
-// Zod schemas
+// Zod schemas - with coercion to handle AI returning strings for numbers
 const MealSchemaCompact = z.object({
   slot: z.enum(['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK']),
   title: z.string().min(3),
-  kcal: z.number().int().nonnegative().optional().default(0),
-  protein_g: z.number().int().nonnegative().optional().default(0),
-  carbs_g: z.number().int().nonnegative().optional().default(0),
-  fat_g: z.number().int().nonnegative().optional().default(0),
+  kcal: z.coerce.number().int().nonnegative().optional().default(0),
+  protein_g: z.coerce.number().int().nonnegative().optional().default(0),
+  carbs_g: z.coerce.number().int().nonnegative().optional().default(0),
+  fat_g: z.coerce.number().int().nonnegative().optional().default(0),
 });
 
 const DayResponseSchemaCompact = z.object({
@@ -37,7 +37,7 @@ const WeekResponseSchema = z.object({
 // Para micro-prompt de ingredientes
 const IngredientSchema = z.object({
   name: z.string(),
-  qty: z.number().positive().optional(),
+  qty: z.coerce.number().positive().optional(),
   unit: z.string().optional(),
   category: z.string().optional(),
 });
