@@ -47,11 +47,55 @@ const IngredientListSchema = z.object({
 
 // Sanitizar por si llegan fences
 function sanitizeToJson(raw: string): string {
-  const cleaned = raw.replace(/```json|```/g, '');
-  const first = cleaned.indexOf('{');
-  const last = cleaned.lastIndexOf('}');
-  if (first === -1 || last === -1 || last < first) return cleaned.trim();
-  return cleaned.slice(first, last + 1).trim();
+  // Remove markdown code blocks
+  let cleaned = raw.replace(/```json|```/g, '');
+  
+  // Remove any non-JSON content before first { or [
+  const firstBrace = cleaned.indexOf('{');
+  const firstBracket = cleaned.indexOf('[');
+  let start = -1;
+  
+  if (firstBrace !== -1 && firstBracket !== -1) {
+    start = Math.min(firstBrace, firstBracket);
+  } else if (firstBrace !== -1) {
+    start = firstBrace;
+  } else if (firstBracket !== -1) {
+    start = firstBracket;
+  }
+  
+  if (start === -1) return cleaned.trim();
+  
+  // Find matching closing brace/bracket
+  const startChar = cleaned[start];
+  const endChar = startChar === '{' ? '}' : ']';
+  const last = cleaned.lastIndexOf(endChar);
+  
+  if (last === -1 || last < start) return cleaned.trim();
+  
+  cleaned = cleaned.slice(start, last + 1).trim();
+  
+  // Remove any trailing incomplete JSON fragments
+  // This helps if the response was truncated
+  try {
+    JSON.parse(cleaned);
+    return cleaned;
+  } catch (e) {
+    // If parse fails, try to find the last complete object/array
+    let lastValid = cleaned.length;
+    while (lastValid > 0) {
+      try {
+        const test = cleaned.substring(0, lastValid);
+        if (test.endsWith('}') || test.endsWith(']')) {
+          JSON.parse(test);
+          return test;
+        }
+      } catch {
+        // Continue searching
+      }
+      lastValid--;
+    }
+    return cleaned;
+  }
 }
 
 // util: concurrent mapper con límite
@@ -95,7 +139,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
   });
 
   private model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
-  private maxTokens = +(1500); // por día / swap
+  private maxTokens = +(2000); // por día / swap
   private concurrency = +(process.env.OPENAI_CONCURRENCY ?? 3);
   private ingConcurrency = Math.max(1, Math.min(4, +(process.env.OPENAI_ING_CONCURRENCY ?? 2)));
 
@@ -303,6 +347,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
           `Genera el JSON del día ${dayIndex}. EXACTAMENTE 3 comidas: BREAKFAST, LUNCH, DINNER.`,
           `Distribuye kcal para sumar aproximadamente ${macros.kcalTarget} kcal en el día.`,
           'Evita anglicismos; usa “porridge de avena”, “salteado de…”, “ensalada de…”, etc.',
+          '⚠️ CRÍTICO: En el campo "title" NO uses comillas dobles ("), comillas simples (\'), ni caracteres especiales. Usa solo letras, números, espacios y guiones.',
           'IMPORTANTE: Varía las proteínas. Rota entre: pollo, pescado, legumbres, huevos, carne roja, tofu, etc. No repitas la misma proteína en comidas consecutivas ni en días consecutivos si es posible.',
           'VARIEDAD CRÍTICA: Cada día debe tener platos DIFERENTES. No repitas desayunos, almuerzos ni cenas. Sé creativo.',
           usedTitlesStr,
