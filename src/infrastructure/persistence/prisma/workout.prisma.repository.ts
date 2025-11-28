@@ -72,6 +72,42 @@ export class WorkoutPrismaRepository implements WorkoutRepositoryPort {
     return this.mapToDomain(found);
   }
 
+  async findById(id: string): Promise<WorkoutPlan | null> {
+    const found = await this.prisma.workoutPlan.findUnique({
+      where: { id },
+      include: {
+        days: {
+          include: {
+            exercises: {
+              orderBy: { order: 'asc' },
+            },
+          },
+          orderBy: { dayIndex: 'asc' },
+        },
+      },
+    });
+
+    if (!found) return null;
+    return this.mapToDomain(found);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.workoutPlan.delete({
+      where: { id },
+    });
+  }
+
+  async update(id: string, updates: Partial<WorkoutPlan>): Promise<void> {
+    await this.prisma.workoutPlan.update({
+      where: { id },
+      data: {
+        notes: updates.notes,
+        // For now, we only support updating notes. 
+        // Deep updates for days/exercises would require more complex logic.
+      },
+    });
+  }
+
   private mapToDomain(raw: any): WorkoutPlan {
     return {
       id: raw.id,
