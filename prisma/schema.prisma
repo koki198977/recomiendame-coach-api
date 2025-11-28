@@ -113,6 +113,12 @@ model User {
   
   // Eliminación de cuenta
   accountDeletions AccountDeletion[]
+
+  // Entrenamientos
+  workoutPlans WorkoutPlan[]
+
+  // Chapi Mind
+  emotionalLogs EmotionalLog[]
 }
 
 
@@ -534,4 +540,60 @@ model AccountDeletion {
   usedAt      DateTime?
 
   @@index([userId, expiresAt])
+}
+
+/**
+ * ===== Entrenamientos (Workout Coach) =====
+ */
+model WorkoutPlan {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart DateTime
+  notes     String?
+  createdAt DateTime     @default(now())
+  days      WorkoutDay[]
+
+  @@unique([userId, weekStart])
+}
+
+model WorkoutDay {
+  id            String            @id @default(cuid())
+  workoutPlanId String
+  workoutPlan   WorkoutPlan       @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
+  dayIndex      Int
+  exercises     WorkoutExercise[]
+
+  @@unique([workoutPlanId, dayIndex])
+}
+
+model WorkoutExercise {
+  id           String     @id @default(cuid())
+  workoutDayId String
+  workoutDay   WorkoutDay @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)
+  name         String
+  sets         Int?
+  reps         String?
+  weight       String?
+  rpe          Int?
+  restSeconds  Int?
+  notes        String?
+  order        Int
+}
+
+/**
+ * ===== Chapi Mind (Emotional Coach) =====
+ */
+model EmotionalLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @default(now())
+  message   String   // User's input
+  emotion   String   // Classified emotion (e.g., "SADNESS", "ANXIETY")
+  advice    String   // AI's explanation/neuroscience
+  actions   Json     // List of suggested actions
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
 }

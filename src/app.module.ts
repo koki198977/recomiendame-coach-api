@@ -15,13 +15,26 @@ import { ProfileModule } from './modules/profile.module';
 import { TaxonomiesModule } from './modules/taxonomies.module';
 import { GamificationModule } from './modules/gamification.module';
 import { TaxonomiesAdminModule } from './modules/taxonomies-admin.module';
+import { WorkoutsModule } from './modules/workouts.module';
+import { ChapiModule } from './modules/chapi.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    PrismaModule, PlansModule, UsersModule, AuthModule, CheckinsModule, 
-    MeModule, MeFeedModule, PostsModule, ProfileModule, TaxonomiesModule,
-    GamificationModule, TaxonomiesAdminModule
+    PrismaModule,
+    UsersModule,
+    AuthModule,
+    PlansModule,
+    WorkoutsModule,
+    ChapiModule,
+    CheckinsModule,
+    MeModule,
+    MeFeedModule,
+    PostsModule,
+    ProfileModule,
+    TaxonomiesModule,
+    GamificationModule,
+    TaxonomiesAdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],
