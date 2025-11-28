@@ -95,7 +95,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
   });
 
   private model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
-  private maxTokens = +(1000); // por día / swap
+  private maxTokens = +(1300); // por día / swap
   private concurrency = +(process.env.OPENAI_CONCURRENCY ?? 3);
   private ingConcurrency = Math.max(1, Math.min(4, +(process.env.OPENAI_ING_CONCURRENCY ?? 2)));
 
