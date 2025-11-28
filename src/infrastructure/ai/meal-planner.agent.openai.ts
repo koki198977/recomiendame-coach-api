@@ -9,7 +9,7 @@ import { createHash } from 'crypto';
 // ─────────────────────────────────────────────────────────────
 // Zod schemas - with coercion to handle AI returning strings for numbers
 const MealSchemaCompact = z.object({
-  slot: z.enum(['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK']),
+  slot: z.enum(['BREAKFAST', 'LUNCH', 'DINNER']),
   title: z.string().min(3),
   kcal: z.coerce.number().int().nonnegative().optional().default(0),
   protein_g: z.coerce.number().int().nonnegative().optional().default(0),
@@ -45,15 +45,15 @@ const IngredientListSchema = z.object({
   ingredients: z.array(IngredientSchema).min(3).max(7),
 });
 
-// Sanitizar y reparar JSON malformado
+// Sanitizar y reparar JSON malformado - Encuentra el primer JSON válido
 function sanitizeToJson(raw: string): string {
-  // Remove markdown code blocks
+  // Step 1: Remove markdown code blocks
   let cleaned = raw.replace(/```json|```/g, '');
   
-  // Remove control characters
+  // Step 2: Remove control characters (but keep valid JSON chars)
   cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
   
-  // Remove any non-JSON content before first { or [
+  // Step 3: Find the start of JSON
   const firstBrace = cleaned.indexOf('{');
   const firstBracket = cleaned.indexOf('[');
   let start = -1;
@@ -66,107 +66,70 @@ function sanitizeToJson(raw: string): string {
     start = firstBracket;
   }
   
-  if (start === -1) return cleaned.trim();
+  if (start === -1) return '{}';
   
-  // Find matching closing brace/bracket
+  // Step 4: Find the FIRST complete JSON by counting braces/brackets
   const startChar = cleaned[start];
-  const endChar = startChar === '{' ? '}' : ']';
-  const last = cleaned.lastIndexOf(endChar);
+  const openChar = startChar;
+  const closeChar = startChar === '{' ? '}' : ']';
   
-  if (last === -1 || last < start) return cleaned.trim();
-  
-  cleaned = cleaned.slice(start, last + 1).trim();
-  
-  // Fix problematic characters in string values
-  // Parse through the JSON and fix strings more carefully
-  let result = '';
+  let depth = 0;
   let inString = false;
-  let isEscaped = false;
-  let isValue = false; // Track if we're in a value (after :) vs a key
+  let escaped = false;
+  let end = -1;
   
-  for (let i = 0; i < cleaned.length; i++) {
+  for (let i = start; i < cleaned.length; i++) {
     const char = cleaned[i];
-    const prevChar = i > 0 ? cleaned[i - 1] : '';
     
-    if (char === '"' && !isEscaped) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    
+    if (char === '\\' && inString) {
+      escaped = true;
+      continue;
+    }
+    
+    if (char === '"') {
       inString = !inString;
-      result += char;
-      
-      // If we just closed a string, check what comes next
-      if (!inString) {
-        // Look ahead to see if this was a key (followed by :) or value
-        let j = i + 1;
-        while (j < cleaned.length && /\s/.test(cleaned[j])) j++;
-        if (j < cleaned.length && cleaned[j] === ':') {
-          isValue = false; // Next string will be after the colon
-        } else {
-          isValue = false; // Could be end of value, comma, etc.
+      continue;
+    }
+    
+    if (!inString) {
+      if (char === openChar) {
+        depth++;
+      } else if (char === closeChar) {
+        depth--;
+        if (depth === 0) {
+          end = i;
+          break;
         }
       }
-    } else if (inString) {
-      // We're inside a string literal
-      if (char === '\\') {
-        isEscaped = !isEscaped;
-        result += char;
-      } else {
-        if (isEscaped) {
-          isEscaped = false;
-          result += char;
-        } else {
-          // Check if this character should be stripped
-          // Only strip from values, not keys
-          if (isValue) {
-            // Strip problematic characters from values
-            if (char === '"' || char === "'" || char === '\n' || char === '\r') {
-              // Skip these characters
-              continue;
-            } else if (/[()[\]{}]/.test(char)) {
-              // Skip brackets and parentheses
-              continue;
-            }
-          } else {
-            // In keys, only remove newlines
-            if (char === '\n' || char === '\r') {
-              result += ' ';
-              continue;
-            }
-          }
-          result += char;
-        }
-      }
-    } else {
-      // Outside of strings
-      if (char === ':') {
-        isValue = true; // Next string will be a value
-      } else if (char === ',' || char === '}' || char === ']') {
-        isValue = false;
-      }
-      result += char;
     }
   }
   
-  cleaned = result;
+  if (end === -1) return '{}';
   
-  // Try to parse and return
+  cleaned = cleaned.slice(start, end + 1);
+  
+  // Step 5: Minimal cleaning - only remove newlines from string values
+  cleaned = cleaned.replace(/"((?:[^"\\]|\\.)*)"/g, (match, content) => {
+    let fixed = content
+      .replace(/\n/g, ' ')
+      .replace(/\r/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return `"${fixed}"`;
+  });
+  
+  // Step 6: Validate
   try {
     JSON.parse(cleaned);
     return cleaned;
-  } catch (e) {
-    // If still fails, try to find the last valid substring
-    let lastValid = cleaned.length;
-    while (lastValid > start + 1) {
-      try {
-        const test = cleaned.substring(0, lastValid);
-        if (test.endsWith('}') || test.endsWith(']')) {
-          JSON.parse(test);
-          return test;
-        }
-      } catch {
-        // Continue searching
-      }
-      lastValid--;
-    }
-    // Last resort: return as is and let the caller handle the error
+  } catch (e: any) {
+    console.error('[sanitizeToJson] Still failed after cleaning:', e.message);
+    console.error('[sanitizeToJson] Cleaned JSON:', cleaned.substring(0, 500));
     return cleaned;
   }
 }
@@ -224,12 +187,16 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
     system: string;
     user: string;
     maxTokens: number;
+    schema?: any; // JSON Schema para structured outputs
   }): Promise<{ raw: string; finish: string | null }> {
     const completion = await this.client.chat.completions.create({
       model: this.model,
       temperature: 0.8,
       max_tokens: params.maxTokens,
-      response_format: { type: 'json_object' },
+      // Use structured outputs if schema provided, otherwise use json_object
+      response_format: params.schema 
+        ? { type: 'json_schema', json_schema: params.schema }
+        : { type: 'json_object' },
       presence_penalty: 0.5,
       frequency_penalty: 0.9,
       messages: [
@@ -432,17 +399,59 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
           this.daySchemaCompact(dayIndex),
         ].join('\n\n');
 
+        // JSON Schema estricto para structured outputs
+        const daySchema = {
+          name: 'day_plan',
+          strict: true,
+          schema: {
+            type: 'object',
+            properties: {
+              dayIndex: { type: 'integer', minimum: 1, maximum: 7 },
+              meals: {
+                type: 'array',
+                minItems: 3,
+                maxItems: 3,
+                items: {
+                  type: 'object',
+                  properties: {
+                    slot: { type: 'string', enum: ['BREAKFAST', 'LUNCH', 'DINNER'] },
+                    title: { type: 'string' },
+                    kcal: { type: 'integer', minimum: 0 },
+                    protein_g: { type: 'integer', minimum: 0 },
+                    carbs_g: { type: 'integer', minimum: 0 },
+                    fat_g: { type: 'integer', minimum: 0 },
+                  },
+                  required: ['slot', 'title', 'kcal', 'protein_g', 'carbs_g', 'fat_g'],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ['dayIndex', 'meals'],
+            additionalProperties: false,
+          },
+        };
+
         const { raw, finish } = await this.askJson({
           system: 'Responde SIEMPRE en español. Devuelve únicamente JSON válido (sin explicaciones).',
           user: userPrompt,
           maxTokens: this.maxTokens,
+          schema: daySchema,
         });
 
         if (finish === 'length') {
           throw new Error(`Truncado por tokens en dayIndex=${dayIndex}. Sube OPENAI_MAX_TOKENS.`);
         }
 
+        // Log the raw response for debugging
+        if (dayIndex === 6) { // Solo para el día 6 que está fallando
+          console.log(`[MealPlanner] Day ${dayIndex} - Raw AI response:`, raw.substring(0, 800));
+        }
+
         const json = sanitizeToJson(raw);
+        
+        if (dayIndex === 6) {
+          console.log(`[MealPlanner] Day ${dayIndex} - After sanitization:`, json.substring(0, 800));
+        }
         
         let parsedJson: any;
         try {
@@ -468,6 +477,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         const parsed = DayResponseSchemaCompact.safeParse(parsedJson);
         if (!parsed.success) {
           console.error(`[MealPlanner] Zod validation error for dayIndex=${dayIndex}:`, parsed.error.message);
+          console.error(`[MealPlanner] Parsed JSON structure:`, JSON.stringify(parsedJson, null, 2));
           throw new Error(`Validación JSON falló en dayIndex=${dayIndex}: ${parsed.error.message}`);
         }
 
