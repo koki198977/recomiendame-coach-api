@@ -4,6 +4,7 @@ import { Plan } from 'src/core/domain/plans/entities';
 export interface PlanRepositoryPort {
   findByUserAndWeek(userId: string, weekStart: Date): Promise<Plan | null>;
   findById(id: string): Promise<Plan | null>;
+  delete(id: string): Promise<void>;
   save(plan: Plan): Promise<Result<Plan>>;
   replaceDay(planId: string, dayIndex: number, meals: Plan['days'][number]['meals']): Promise<void>;
   replaceMeal(

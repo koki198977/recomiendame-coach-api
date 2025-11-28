@@ -8,6 +8,7 @@ import { MEAL_PLANNER_AGENT } from '../core/application/plans/ports/out.meal-pla
 import { NOTIFICATION_PORT } from '../core/application/plans/ports/out.notification.port';
 import { InAppNotificationAdapter } from '../infrastructure/notifications/inapp.notification.adapter';
 import { GetPlanByIdUseCase } from 'src/core/application/plans/use-cases/get-plan-by-id.usecase';
+import { DeleteMealPlanUseCase } from 'src/core/application/plans/use-cases/delete-meal-plan.usecase';
 import { GetPlanByWeekUseCase } from 'src/core/application/plans/use-cases/get-plan-by-week.usecase';
 import { OpenAIMealPlannerAgent } from 'src/infrastructure/ai/meal-planner.agent.openai';
 import { ProfileModule } from './profile.module';
@@ -27,6 +28,7 @@ import { UnitConverterService } from 'src/core/application/plans/services/unit-c
   providers: [
     GenerateWeeklyPlanUseCase,
     GetPlanByIdUseCase,
+    DeleteMealPlanUseCase,
     GetPlanByWeekUseCase,
     RegeneratePlanDayUseCase,
     SwapMealUseCase,

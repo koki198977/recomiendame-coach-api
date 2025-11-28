@@ -66,6 +66,12 @@ export class PlanPrismaRepository implements PlanRepositoryPort {
     return p ? PlanMapper.fromPrisma(p) : null;
   }
 
+  async delete(id: string): Promise<void> {
+    await this.prisma.plan.delete({
+      where: { id },
+    });
+  }
+
   async replaceDay(planId: string, dayIndex: number, meals: Plan['days'][number]['meals']): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       const day = await tx.planDay.findFirst({ where: { planId, dayIndex } });

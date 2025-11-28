@@ -9,6 +9,8 @@ import { GetShoppingListUseCase } from 'src/core/application/plans/use-cases/get
 import { GenerateShoppingListUseCase } from 'src/core/application/plans/use-cases/generate-shopping-list.usecase';
 import { MacrosService } from 'src/core/application/plans/services/macros.service';
 import { PROFILE_REPO, ProfileRepoPort } from 'src/core/application/profile/ports/out.profile-repo.port';
+import { DeleteMealPlanUseCase } from 'src/core/application/plans/use-cases/delete-meal-plan.usecase';
+import { Delete, HttpCode, HttpStatus } from '@nestjs/common';
 
 @Controller('plans')
 @UseGuards(JwtAuthGuard)
@@ -22,12 +24,20 @@ export class PlansController {
     private readonly getShopping: GetShoppingListUseCase,
     private readonly shoppingListUC: GenerateShoppingListUseCase,
     private readonly macros: MacrosService,
+    private readonly deleteMealPlan: DeleteMealPlanUseCase,
     @Inject(PROFILE_REPO) private readonly profiles: ProfileRepoPort,
   ) {}
 
   @Get(':id')
   async byId(@Param('id') id: string) {
     return this.getById.execute(id);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async delete(@Param('id') id: string, @Req() req: any) {
+    const userId = req.user.userId ?? req.user.sub;
+    await this.deleteMealPlan.execute(id, userId);
   }
 
   @Get()
