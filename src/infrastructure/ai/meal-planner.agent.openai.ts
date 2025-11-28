@@ -95,7 +95,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
   });
 
   private model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
-  private maxTokens = +(1300); // por día / swap
+  private maxTokens = +(1500); // por día / swap
   private concurrency = +(process.env.OPENAI_CONCURRENCY ?? 3);
   private ingConcurrency = Math.max(1, Math.min(4, +(process.env.OPENAI_ING_CONCURRENCY ?? 2)));
 
@@ -320,8 +320,21 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         }
 
         const json = sanitizeToJson(raw);
-        const parsed = DayResponseSchemaCompact.safeParse(JSON.parse(json));
+        
+        let parsedJson: any;
+        try {
+          parsedJson = JSON.parse(json);
+        } catch (parseError: any) {
+          console.error(`[MealPlanner] JSON parse error for dayIndex=${dayIndex}`);
+          console.error(`[MealPlanner] Raw response (first 500 chars):`, raw.substring(0, 500));
+          console.error(`[MealPlanner] Sanitized JSON (first 500 chars):`, json.substring(0, 500));
+          console.error(`[MealPlanner] Parse error:`, parseError.message);
+          throw new Error(`JSON parse failed in dayIndex=${dayIndex}: ${parseError.message}. Check logs for details.`);
+        }
+        
+        const parsed = DayResponseSchemaCompact.safeParse(parsedJson);
         if (!parsed.success) {
+          console.error(`[MealPlanner] Zod validation error for dayIndex=${dayIndex}:`, parsed.error.message);
           throw new Error(`Validación JSON falló en dayIndex=${dayIndex}: ${parsed.error.message}`);
         }
 
