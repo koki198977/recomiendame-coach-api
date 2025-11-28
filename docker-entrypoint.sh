@@ -13,7 +13,7 @@ done
 echo "✅ Base de datos disponible. Ejecutando Prisma..."
 # Genera client y aplica migraciones (usa `deploy` para idempotente en contenedor)
 npx prisma generate
-npx prisma migrate deploy
+npx prisma db push --accept-data-loss
 
 
 # Si definiste seed (package.json -> prisma.seed), descomenta:
