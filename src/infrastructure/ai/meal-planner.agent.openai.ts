@@ -45,10 +45,13 @@ const IngredientListSchema = z.object({
   ingredients: z.array(IngredientSchema).min(3).max(7),
 });
 
-// Sanitizar por si llegan fences
+// Sanitizar y reparar JSON malformado
 function sanitizeToJson(raw: string): string {
   // Remove markdown code blocks
   let cleaned = raw.replace(/```json|```/g, '');
+  
+  // Remove control characters
+  cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
   
   // Remove any non-JSON content before first { or [
   const firstBrace = cleaned.indexOf('{');
@@ -74,15 +77,84 @@ function sanitizeToJson(raw: string): string {
   
   cleaned = cleaned.slice(start, last + 1).trim();
   
-  // Remove any trailing incomplete JSON fragments
-  // This helps if the response was truncated
+  // Fix problematic characters in string values
+  // Parse through the JSON and fix strings more carefully
+  let result = '';
+  let inString = false;
+  let isEscaped = false;
+  let isValue = false; // Track if we're in a value (after :) vs a key
+  
+  for (let i = 0; i < cleaned.length; i++) {
+    const char = cleaned[i];
+    const prevChar = i > 0 ? cleaned[i - 1] : '';
+    
+    if (char === '"' && !isEscaped) {
+      inString = !inString;
+      result += char;
+      
+      // If we just closed a string, check what comes next
+      if (!inString) {
+        // Look ahead to see if this was a key (followed by :) or value
+        let j = i + 1;
+        while (j < cleaned.length && /\s/.test(cleaned[j])) j++;
+        if (j < cleaned.length && cleaned[j] === ':') {
+          isValue = false; // Next string will be after the colon
+        } else {
+          isValue = false; // Could be end of value, comma, etc.
+        }
+      }
+    } else if (inString) {
+      // We're inside a string literal
+      if (char === '\\') {
+        isEscaped = !isEscaped;
+        result += char;
+      } else {
+        if (isEscaped) {
+          isEscaped = false;
+          result += char;
+        } else {
+          // Check if this character should be stripped
+          // Only strip from values, not keys
+          if (isValue) {
+            // Strip problematic characters from values
+            if (char === '"' || char === "'" || char === '\n' || char === '\r') {
+              // Skip these characters
+              continue;
+            } else if (/[()[\]{}]/.test(char)) {
+              // Skip brackets and parentheses
+              continue;
+            }
+          } else {
+            // In keys, only remove newlines
+            if (char === '\n' || char === '\r') {
+              result += ' ';
+              continue;
+            }
+          }
+          result += char;
+        }
+      }
+    } else {
+      // Outside of strings
+      if (char === ':') {
+        isValue = true; // Next string will be a value
+      } else if (char === ',' || char === '}' || char === ']') {
+        isValue = false;
+      }
+      result += char;
+    }
+  }
+  
+  cleaned = result;
+  
+  // Try to parse and return
   try {
     JSON.parse(cleaned);
     return cleaned;
   } catch (e) {
-    // If parse fails, try to find the last complete object/array
+    // If still fails, try to find the last valid substring
     let lastValid = cleaned.length;
-    while (lastValid > 0) {
+    while (lastValid > start + 1) {
       try {
         const test = cleaned.substring(0, lastValid);
         if (test.endsWith('}') || test.endsWith(']')) {
@@ -94,6 +166,7 @@ function sanitizeToJson(raw: string): string {
       }
       lastValid--;
     }
+    // Last resort: return as is and let the caller handle the error
     return cleaned;
   }
 }
@@ -139,7 +212,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
   });
 
   private model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
-  private maxTokens = +(3000); // por día / swap
+  private maxTokens = +(5000); // por día / swap
   private concurrency = +(process.env.OPENAI_CONCURRENCY ?? 3);
   private ingConcurrency = Math.max(1, Math.min(4, +(process.env.OPENAI_ING_CONCURRENCY ?? 2)));
 
@@ -346,8 +419,13 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
           `Tema del día: ${themes[themeIdx]}.`,
           `Genera el JSON del día ${dayIndex}. EXACTAMENTE 3 comidas: BREAKFAST, LUNCH, DINNER.`,
           `Distribuye kcal para sumar aproximadamente ${macros.kcalTarget} kcal en el día.`,
-          'Evita anglicismos; usa “porridge de avena”, “salteado de…”, “ensalada de…”, etc.',
-          '⚠️ CRÍTICO: En el campo "title" NO uses comillas dobles ("), comillas simples (\'), ni caracteres especiales. Usa solo letras, números, espacios y guiones.',
+          'Evita anglicismos; usa "porridge de avena", "salteado de…", "ensalada de…", etc.',
+          '⚠️ CRÍTICO - FORMATO JSON ESTRICTO:',
+          '- En el campo "title": usa SOLO letras, números, espacios, guiones (-) y puntos (.)',
+          '- NO uses comillas dobles ("), comillas simples (\'), apóstrofes, paréntesis, corchetes, ni caracteres especiales',
+          '- Si necesitas mencionar cantidades o medidas, escríbelas en palabras (ej: "Ensalada de quinoa con verduras" NO "Ensalada de quinoa (200g)")',
+          '- NUNCA incluyas saltos de línea dentro de valores string',
+          '- ASEGÚRATE de que TODOS los campos numéricos (kcal, protein_g, carbs_g, fat_g) sean números enteros positivos',
           'IMPORTANTE: Varía las proteínas. Rota entre: pollo, pescado, legumbres, huevos, carne roja, tofu, etc. No repitas la misma proteína en comidas consecutivas ni en días consecutivos si es posible.',
           'VARIEDAD CRÍTICA: Cada día debe tener platos DIFERENTES. No repitas desayunos, almuerzos ni cenas. Sé creativo.',
           usedTitlesStr,
@@ -371,9 +449,19 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
           parsedJson = JSON.parse(json);
         } catch (parseError: any) {
           console.error(`[MealPlanner] JSON parse error for dayIndex=${dayIndex}`);
-          console.error(`[MealPlanner] Raw response (first 500 chars):`, raw.substring(0, 500));
-          console.error(`[MealPlanner] Sanitized JSON (first 500 chars):`, json.substring(0, 500));
+          console.error(`[MealPlanner] Raw response:`, raw);
+          console.error(`[MealPlanner] Sanitized JSON:`, json);
           console.error(`[MealPlanner] Parse error:`, parseError.message);
+          console.error(`[MealPlanner] Problematic character at position:`, parseError.message.match(/position (\d+)/)?.[1]);
+          
+          // Try to show context around the error position
+          if (parseError.message.includes('position')) {
+            const pos = parseInt(parseError.message.match(/position (\d+)/)?.[1] || '0');
+            const start = Math.max(0, pos - 50);
+            const end = Math.min(json.length, pos + 50);
+            console.error(`[MealPlanner] Context around error:`, json.substring(start, end));
+          }
+          
           throw new Error(`JSON parse failed in dayIndex=${dayIndex}: ${parseError.message}. Check logs for details.`);
         }
         
