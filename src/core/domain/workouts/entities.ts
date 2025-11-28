@@ -8,6 +8,10 @@ export class WorkoutExercise {
   restSeconds?: number;
   notes?: string;
   order: number;
+  muscleGroup?: string;
+  equipment?: string;
+  instructions?: string;
+  videoQuery?: string;
 }
 
 export class WorkoutDay {

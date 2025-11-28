@@ -13,6 +13,10 @@ const ExerciseSchema = z.object({
   rpe: z.number().int().optional(),
   restSeconds: z.number().int().optional(),
   notes: z.string().optional(),
+  muscleGroup: z.string().optional(),
+  equipment: z.string().optional(),
+  instructions: z.string().optional(), // Paso a paso
+  videoQuery: z.string().optional(), // Término de búsqueda para video
 });
 
 const DayResponseSchema = z.object({
@@ -68,6 +72,11 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
       - Distribuye los días lógicamente (ej: Lunes, Martes, Jueves, Viernes).
       - Incluye ejercicios compuestos y de aislamiento según el objetivo.
       - Especifica series, repeticiones (rango), y descanso sugerido.
+      - **VISUALIZACIÓN:** Para cada ejercicio, incluye:
+        - "muscleGroup": Músculo principal (ej: "Pectoral", "Cuádriceps").
+        - "equipment": Qué se necesita (ej: "Barra", "Mancuernas", "Máquina").
+        - "instructions": Breve explicación paso a paso de la técnica correcta.
+        - "videoQuery": Término de búsqueda preciso para encontrar un video tutorial en YouTube (ej: "sentadilla barra alta tecnica").
       
       **Formato JSON esperado:**
       {
@@ -76,7 +85,18 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
           {
             "dayIndex": 1, // 1=Lunes, 7=Domingo
             "exercises": [
-              { "name": "Sentadilla con barra", "sets": 4, "reps": "6-8", "rpe": 8, "restSeconds": 180, "notes": "Bajar profundo" },
+              { 
+                "name": "Sentadilla con barra", 
+                "sets": 4, 
+                "reps": "6-8", 
+                "rpe": 8, 
+                "restSeconds": 180, 
+                "notes": "Bajar profundo",
+                "muscleGroup": "Cuádriceps",
+                "equipment": "Barra, Rack",
+                "instructions": "1. Coloca la barra en los trapecios. 2. Pies ancho de hombros. 3. Baja controlando...",
+                "videoQuery": "sentadilla barra tecnica"
+              },
               ...
             ]
           },
@@ -108,6 +128,7 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
         exercises: d.exercises.map((e, idx) => ({
           ...e,
           order: idx,
+          videoQuery: e.videoQuery,
         })),
       }));
 
