@@ -139,7 +139,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
   });
 
   private model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
-  private maxTokens = +(2000); // por día / swap
+  private maxTokens = +(3000); // por día / swap
   private concurrency = +(process.env.OPENAI_CONCURRENCY ?? 3);
   private ingConcurrency = Math.max(1, Math.min(4, +(process.env.OPENAI_ING_CONCURRENCY ?? 2)));
 
@@ -336,9 +336,9 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
       for (const dayIndex of dayIndices) {
         const slots = slotPatterns[(themeIdx + dayIndex - 1) % slotPatterns.length];
         
-        // Lista de títulos usados hasta ahora
+        // Lista de títulos usados hasta ahora (limitado a 15 para no saturar el prompt)
         const usedTitlesStr = usedTitlesThisWeek.size > 0 
-          ? `Ya usaste en días anteriores: ${[...usedTitlesThisWeek].slice(0, 20).join(', ')}. NO REPITAS NINGUNO.`
+          ? `Ya usaste en días anteriores: ${[...usedTitlesThisWeek].slice(-15).join(', ')}. NO REPITAS NINGUNO.`
           : '';
 
         const userPrompt = [
