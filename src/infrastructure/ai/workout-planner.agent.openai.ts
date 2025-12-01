@@ -44,12 +44,14 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
     userProfile,
     goal,
     daysAvailable,
+    equipmentImageUrls,
   }: {
     userId: string;
     weekStart: Date;
     userProfile: any;
     goal: string;
     daysAvailable: number;
+    equipmentImageUrls?: string[];
   }): Promise<{ days: WorkoutDay[]; notes?: string }> {
     try {
       const system = `Eres un entrenador personal experto (Coach de Gym).
@@ -57,6 +59,24 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
       Responde SIEMPRE en español neutro.
       Devuelve únicamente JSON válido (sin bloques de código ni explicaciones).
       El formato de respuesta debe cumplir estrictamente con el esquema solicitado.`;
+
+      // Construir el prompt base
+      let equipmentContext = '';
+      if (equipmentImageUrls && equipmentImageUrls.length > 0) {
+        equipmentContext = `
+      **EQUIPAMIENTO DISPONIBLE:**
+      El usuario ha proporcionado ${equipmentImageUrls.length} imagen(es) de su equipamiento disponible.
+      ⚠️ IMPORTANTE: Analiza las imágenes y genera ejercicios EXCLUSIVAMENTE con el equipamiento visible en las fotos.
+      NO incluyas ejercicios que requieran equipamiento que no aparezca en las imágenes.
+      Si ves mancuernas, usa ejercicios con mancuernas. Si ves máquinas específicas, úsalas.
+      Sé creativo con el equipamiento disponible para cumplir el objetivo del usuario.
+      `;
+      } else {
+        equipmentContext = `
+      **EQUIPAMIENTO:**
+      El usuario no ha especificado equipamiento. Asume un gimnasio completo con barras, mancuernas, máquinas, etc.
+      `;
+      }
 
       const userPrompt = `
       Genera una rutina de entrenamiento para la semana del ${weekStart.toISOString().split('T')[0]}.
@@ -66,6 +86,8 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
       - Días disponibles para entrenar: ${daysAvailable}
       - Nivel de experiencia: ${userProfile?.experienceLevel ?? 'Intermedio'}
       - Lesiones/Limitaciones: ${userProfile?.injuries ?? 'Ninguna'}
+      
+      ${equipmentContext}
       
       **Requisitos:**
       - Genera exactamente ${daysAvailable} días de entrenamiento.
@@ -105,13 +127,32 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
       }
       `;
 
+      // Construir el mensaje del usuario con o sin imágenes
+      const userMessage: any = equipmentImageUrls && equipmentImageUrls.length > 0
+        ? {
+            role: 'user',
+            content: [
+              { type: 'text', text: userPrompt },
+              ...equipmentImageUrls.map(url => ({
+                type: 'image_url',
+                image_url: { url, detail: 'high' }
+              }))
+            ]
+          }
+        : { role: 'user', content: userPrompt };
+
+      // Usar modelo con vision si hay imágenes
+      const modelToUse = equipmentImageUrls && equipmentImageUrls.length > 0
+        ? 'gpt-4o'  // GPT-4 Vision
+        : this.model;
+
       const completion = await this.client.chat.completions.create({
-        model: this.model,
+        model: modelToUse,
         temperature: 0.4,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: system },
-          { role: 'user', content: userPrompt },
+          userMessage,
         ],
       });
 

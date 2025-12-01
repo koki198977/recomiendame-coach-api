@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Post, Query, UseGuards, Request, Delete, Put, Param } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards, Request, Delete, Put, Param, ValidationPipe } from '@nestjs/common';
 import { GenerateWeeklyWorkoutPlanUseCase } from '../../core/application/workouts/use-cases/generate-weekly-workout-plan.usecase';
 import { GetWorkoutPlanUseCase } from '../../core/application/workouts/use-cases/get-workout-plan.usecase';
 import { DeleteWorkoutPlanUseCase } from '../../core/application/workouts/use-cases/delete-workout-plan.usecase';
 import { UpdateWorkoutPlanUseCase } from '../../core/application/workouts/use-cases/update-workout-plan.usecase';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { GenerateWorkoutDto } from '../../core/application/workouts/dto/generate-workout.dto';
 
 @Controller('workouts')
 @UseGuards(JwtAuthGuard)
@@ -16,15 +17,18 @@ export class WorkoutsController {
   ) {}
 
   @Post('generate')
-  async generate(@Body() body: any, @Request() req: any) {
+  async generate(
+    @Body(new ValidationPipe({ transform: true, whitelist: true })) body: GenerateWorkoutDto,
+    @Request() req: any
+  ) {
     const userId = req.user.userId ?? req.user.sub;
-    const { isoWeek, daysAvailable, goal } = body;
 
     const result = await this.generateWeeklyPlan.execute({
       userId,
-      isoWeek,
-      daysAvailable: daysAvailable ?? 4,
-      goal: goal ?? 'GENERAL',
+      isoWeek: body.isoWeek,
+      daysAvailable: body.daysAvailable ?? 4,
+      goal: body.goal ?? 'GENERAL',
+      equipmentImageUrls: body.equipmentImageUrls,
     });
 
     if (result.ok) {
