@@ -229,6 +229,10 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
       `Restringe alergias: ${(preferences?.allergies ?? []).join(', ') || 'ninguna'}.`,
     ];
     
+    // Manejo de preferencias de cocina
+    const cuisinesLike = preferences?.cuisinesLike ?? [];
+    const cuisinesDislike = preferences?.cuisinesDislike ?? [];
+    
     // Si es vegetariano, sobrescribir las reglas de proteínas
     if (isVegetarian) {
       baseRules.push(
@@ -236,11 +240,27 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         'Fuentes de proteína PERMITIDAS: legumbres (lentejas, garbanzos, frijoles), tofu, tempeh, seitán, huevos, lácteos (queso, yogur), quinoa, frutos secos, semillas.',
         'PRIORIZA platos vegetarianos variados y balanceados.',
       );
-    } else {
+    }
+    
+    // Reglas de preferencias de cocina
+    if (cuisinesLike.length > 0) {
       baseRules.push(
-        `Preferencias: ${(preferences?.cuisinesLike ?? []).join(', ') || 'ninguna'}. Evitar: ${
-          (preferences?.cuisinesDislike ?? []).join(', ') || 'ninguna'
-        }.`,
+        `✅ COCINAS PREFERIDAS (USA SOLO ESTAS): ${cuisinesLike.join(', ')}.`,
+        `⚠️ IMPORTANTE: Genera platos EXCLUSIVAMENTE de estas cocinas. Alterna entre ellas para variedad.`,
+      );
+    }
+    
+    if (cuisinesDislike.length > 0) {
+      baseRules.push(
+        `❌ COCINAS A EVITAR (NO USES NINGUNA): ${cuisinesDislike.join(', ')}.`,
+        `⚠️ CRÍTICO: NO generes platos de estas cocinas bajo ninguna circunstancia.`,
+      );
+    }
+    
+    // Si no tiene preferencias específicas, dar variedad general
+    if (cuisinesLike.length === 0 && cuisinesDislike.length === 0) {
+      baseRules.push(
+        '🌎 VARIEDAD: Alterna entre diferentes estilos de cocina (chilena, mediterránea, asiática, latinoamericana, etc.) para mantener variedad.',
       );
     }
     
@@ -339,16 +359,16 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         }
       }
 
-      // variedad con semilla
+      // variedad con semilla - temas genéricos que no sobrescriben preferencias
       const seed = weekSeed(userId, weekStart);
       const themes = [
-        'toque mediterráneo',
-        'toque chileno sencillo',
-        'enfoque alto en proteína',
-        'vegetariano fácil',
-        'rápido 20 minutos',
-        'inspiración mexicana suave',
-        'inspiración peruana ligera',
+        'variedad balanceada',
+        'enfoque en proteínas de calidad',
+        'comidas rápidas y nutritivas',
+        'platos caseros saludables',
+        'opciones ligeras y frescas',
+        'comidas reconfortantes',
+        'preparaciones sencillas',
       ];
       const themeIdx = seed % themes.length;
 
@@ -383,7 +403,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
 
         const userPrompt = [
           baseContext,
-          `Tema del día: ${themes[themeIdx]}.`,
+          `Estilo sugerido: ${themes[themeIdx]}.`,
           `Genera el JSON del día ${dayIndex}. EXACTAMENTE 3 comidas: BREAKFAST, LUNCH, DINNER.`,
           `Distribuye kcal para sumar aproximadamente ${macros.kcalTarget} kcal en el día.`,
           'Evita anglicismos; usa "porridge de avena", "salteado de…", "ensalada de…", etc.',
