@@ -18,6 +18,7 @@ import { TaxonomiesAdminModule } from './modules/taxonomies-admin.module';
 import { WorkoutsModule } from './modules/workouts.module';
 import { ChapiModule } from './modules/chapi.module';
 import { MediaModule } from './modules/media.module';
+import { MealsModule } from './modules/meals.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { MediaModule } from './modules/media.module';
     GamificationModule,
     TaxonomiesAdminModule,
     MediaModule,
+    MealsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

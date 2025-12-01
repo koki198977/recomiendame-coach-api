@@ -119,6 +119,9 @@ model User {
 
   // Chapi Mind
   emotionalLogs EmotionalLog[]
+
+  // Meal Logging
+  mealLogs MealLog[]
 }
 
 
@@ -366,6 +369,7 @@ model Meal {
   fat_g       Int
   tags        String[]
   ingredients MealIngredient[]
+  logs        MealLog[]        // Registros de consumo de esta comida
 
   @@unique([planDayId, slot])
 }
@@ -600,4 +604,28 @@ model EmotionalLog {
   createdAt DateTime @default(now())
 
   @@index([userId, date])
+}
+
+/**
+ * ===== Meal Logging (Registro de comidas consumidas) =====
+ */
+model MealLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealId      String?  // Referencia a comida del plan (opcional)
+  meal        Meal?    @relation(fields: [mealId], references: [id], onDelete: SetNull)
+  date        DateTime @default(now())
+  slot        MealSlot
+  title       String
+  kcal        Int
+  protein_g   Int
+  carbs_g     Int
+  fat_g       Int
+  notes       String?
+  imageUrl    String?  // Foto de la comida (opcional)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, date])
+  @@index([mealId])
 }
