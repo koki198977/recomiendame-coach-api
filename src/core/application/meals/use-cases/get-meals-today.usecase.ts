@@ -6,12 +6,12 @@ export class GetMealsTodayUseCase {
   constructor(private prisma: PrismaService) {}
 
   async execute(userId: string, date?: string) {
-    const targetDate = date ? new Date(date) : new Date();
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
+    // Importar las utilidades de fecha de Chile
+    const { getChileDateString, getChileDayStart, getChileDayEnd } = await import('../../../domain/common/chile-date.util');
     
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    const dateString = date || getChileDateString();
+    const startOfDay = getChileDayStart(dateString);
+    const endOfDay = getChileDayEnd(dateString);
 
     const logs = await this.prisma.mealLog.findMany({
       where: {
@@ -45,7 +45,7 @@ export class GetMealsTodayUseCase {
     );
 
     return {
-      date: targetDate.toISOString().split('T')[0],
+      date: dateString,
       logs: logs.map(log => ({
         id: log.id,
         mealId: log.mealId,

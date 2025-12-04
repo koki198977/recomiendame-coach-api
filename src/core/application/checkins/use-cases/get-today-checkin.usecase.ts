@@ -1,9 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CHECKIN_REPOSITORY, CheckinRepositoryPort } from '../ports/out.checkin-repository.port';
-
-function normalizeUTC(date: Date) {
-  return new Date(date.toISOString().slice(0, 10) + 'T00:00:00.000Z');
-}
+import { getChileDateString, normalizeToUTCMidnight } from '../../../domain/common/chile-date.util';
 
 @Injectable()
 export class GetTodayCheckinUseCase {
@@ -12,7 +9,8 @@ export class GetTodayCheckinUseCase {
   ) {}
 
   async execute(userId: string) {
-    const today = normalizeUTC(new Date());
+    const todayString = getChileDateString();
+    const today = normalizeToUTCMidnight(todayString);
     const checkins = await this.repo.listInRange(userId, today, today);
     
     const todayCheckin = checkins.length > 0 ? checkins[0] : null;
@@ -27,7 +25,7 @@ export class GetTodayCheckinUseCase {
         notes: todayCheckin.props.notes,
       } : null,
       hasCheckin: todayCheckin !== null,
-      date: today.toISOString().split('T')[0], // YYYY-MM-DD format
+      date: todayString, // YYYY-MM-DD format en hora de Chile
     };
   }
 }

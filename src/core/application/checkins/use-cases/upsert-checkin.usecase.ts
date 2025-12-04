@@ -2,10 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { CHECKIN_REPOSITORY, CheckinRepositoryPort } from '../ports/out.checkin-repository.port';
 import { UpsertCheckinDto } from '../dto/upsert-checkin.dto';
 import { OnCheckinConfirmedUseCase } from '../../gamification/use-cases/on-checkin-confirmed.usecase';
-
-function normalizeUTC(date: Date) {
-  return new Date(date.toISOString().slice(0, 10) + 'T00:00:00.000Z');
-}
+import { getChileDateString, normalizeToUTCMidnight } from '../../../domain/common/chile-date.util';
 
 @Injectable()
 export class UpsertCheckinUseCase {
@@ -15,7 +12,9 @@ export class UpsertCheckinUseCase {
   ) {}
 
   async execute(userId: string, dto: UpsertCheckinDto) {
-    const date = dto.date ? new Date(dto.date + 'T00:00:00.000Z') : normalizeUTC(new Date());
+    // Si no se envía fecha, usar la fecha actual en zona horaria de Chile
+    const dateString = dto.date || getChileDateString();
+    const date = normalizeToUTCMidnight(dateString);
 
     const saved = await this.repo.upsertForDate({
       userId, date,
