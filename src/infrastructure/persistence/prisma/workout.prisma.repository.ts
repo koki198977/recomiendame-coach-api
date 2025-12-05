@@ -208,6 +208,10 @@ export class WorkoutPrismaRepository implements WorkoutRepositoryPort {
       days: raw.days.map((d: any) => ({
         id: d.id,
         dayIndex: d.dayIndex,
+        completed: d.completed,
+        completedAt: d.completedAt,
+        durationMinutes: d.durationMinutes,
+        caloriesBurned: d.caloriesBurned,
         exercises: d.exercises.map((e: any) => ({
           id: e.id,
           name: e.name,
@@ -222,6 +226,7 @@ export class WorkoutPrismaRepository implements WorkoutRepositoryPort {
           equipment: e.equipment,
           instructions: e.instructions,
           videoQuery: e.videoQuery,
+          completed: e.completed,
         })),
       })),
     };
