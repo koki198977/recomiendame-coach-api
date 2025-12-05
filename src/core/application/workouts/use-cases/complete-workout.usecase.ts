@@ -39,16 +39,7 @@ export class CompleteWorkoutUseCase {
         return err(new BadRequestException('Este entrenamiento ya fue completado'));
       }
 
-      // 4. Actualizar el día como completado
-      const updatedDay = await this.workoutRepo.completeWorkoutDay({
-        workoutDayId: day.id,
-        completed: true,
-        completedAt: new Date(dto.completedAt),
-        durationMinutes: dto.durationMinutes,
-        caloriesBurned: dto.caloriesBurned,
-      });
-
-      // 5. Actualizar ejercicios individuales
+      // 4. Actualizar ejercicios individuales
       for (const exerciseDto of dto.exercises) {
         const exercise = day.exercises.find((e) => e.name === exerciseDto.name);
         if (exercise && exercise.id) {
@@ -60,10 +51,24 @@ export class CompleteWorkoutUseCase {
         }
       }
 
-      // 6. Registrar calorías en ActivityLog
+      // 5. Calcular estadísticas
+      const completedExercises = dto.exercises.filter(e => e.completed).length;
+      const totalExercises = dto.exercises.length;
+      const completedAt = dto.completedAt ? new Date(dto.completedAt) : new Date();
+
+      // 6. Actualizar el día como completado
+      const updatedDay = await this.workoutRepo.completeWorkoutDay({
+        workoutDayId: day.id,
+        completed: true,
+        completedAt,
+        durationMinutes: dto.durationMinutes,
+        caloriesBurned: dto.caloriesBurned,
+      });
+
+      // 7. Registrar calorías en ActivityLog
       await this.workoutRepo.logActivity({
         userId,
-        date: new Date(dto.completedAt),
+        date: completedAt,
         minutes: dto.durationMinutes,
         kcal: dto.caloriesBurned,
       });
@@ -72,8 +77,8 @@ export class CompleteWorkoutUseCase {
         success: true,
         workoutDay: updatedDay,
         caloriesBurned: dto.caloriesBurned,
-        completedExercises: dto.completedExercises,
-        totalExercises: dto.totalExercises,
+        completedExercises,
+        totalExercises,
       });
     } catch (error: any) {
       return err(error);
