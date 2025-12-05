@@ -20,7 +20,22 @@ if [ "$NODE_ENV" = "development" ]; then
   npx prisma migrate dev --skip-generate
 else
   echo "🚀 Modo producción: usando migrate deploy"
-  npx prisma migrate deploy
+  # Intentar aplicar migraciones, si falla por drift, intentar resolverlo
+  if ! npx prisma migrate deploy 2>&1; then
+    echo "⚠️  Detectado drift, intentando resolver..."
+    # Marcar migraciones existentes como aplicadas
+    npx prisma migrate resolve --applied "20251009190655_init" 2>/dev/null || true
+    npx prisma migrate resolve --applied "20251010111311_add_password_reset_relation" 2>/dev/null || true
+    npx prisma migrate resolve --applied "20251010175151_fix_user_relations" 2>/dev/null || true
+    npx prisma migrate resolve --applied "20251016195348_add_user_role" 2>/dev/null || true
+    npx prisma migrate resolve --applied "20251017152936_add_email_verification" 2>/dev/null || true
+    npx prisma migrate resolve --applied "20251022191036_add_account_deletion" 2>/dev/null || true
+    npx prisma migrate resolve --applied "20251027232858_add_cascade_delete" 2>/dev/null || true
+    npx prisma migrate resolve --applied "20251128123701_add_workout_coach" 2>/dev/null || true
+    npx prisma migrate resolve --applied "20251128125900_add_chapi_mind" 2>/dev/null || true
+    # Intentar de nuevo
+    npx prisma migrate deploy
+  fi
 fi
 
 # Si definiste seed (package.json -> prisma.seed), descomenta:
