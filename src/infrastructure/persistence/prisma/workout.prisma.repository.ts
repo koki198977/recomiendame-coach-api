@@ -52,12 +52,14 @@ export class WorkoutPrismaRepository implements WorkoutRepositoryPort {
     }
   }
 
-  async findByUserAndWeek(userId: string, weekStart: Date): Promise<WorkoutPlan | null> {
+  async findByUserAndWeek(userId: string, weekStart: Date | string): Promise<WorkoutPlan | null> {
+    const weekDate = typeof weekStart === 'string' ? new Date(weekStart) : weekStart;
+    
     const found = await this.prisma.workoutPlan.findUnique({
       where: {
         userId_weekStart: {
           userId,
-          weekStart,
+          weekStart: weekDate,
         },
       },
       include: {
@@ -108,6 +110,91 @@ export class WorkoutPrismaRepository implements WorkoutRepositoryPort {
         notes: updates.notes,
         // For now, we only support updating notes. 
         // Deep updates for days/exercises would require more complex logic.
+      },
+    });
+  }
+
+  async completeWorkoutDay(params: {
+    workoutDayId: string;
+    completed: boolean;
+    completedAt: Date;
+    durationMinutes: number;
+    caloriesBurned: number;
+  }): Promise<any> {
+    return await this.prisma.workoutDay.update({
+      where: { id: params.workoutDayId },
+      data: {
+        completed: params.completed,
+        completedAt: params.completedAt,
+        durationMinutes: params.durationMinutes,
+        caloriesBurned: params.caloriesBurned,
+      },
+      include: {
+        exercises: true,
+      },
+    });
+  }
+
+  async updateExerciseCompletion(exerciseId: string, completed: boolean, notes?: string): Promise<void> {
+    await this.prisma.workoutExercise.update({
+      where: { id: exerciseId },
+      data: {
+        completed,
+        ...(notes && { notes }),
+      },
+    });
+  }
+
+  async logActivity(params: {
+    userId: string;
+    date: Date;
+    minutes: number;
+    kcal: number;
+  }): Promise<void> {
+    // Buscar si ya existe un log para ese día
+    const existing = await this.prisma.activityLog.findFirst({
+      where: {
+        userId: params.userId,
+        date: {
+          gte: new Date(params.date.setHours(0, 0, 0, 0)),
+          lt: new Date(params.date.setHours(23, 59, 59, 999)),
+        },
+      },
+    });
+
+    if (existing) {
+      // Sumar a los valores existentes
+      await this.prisma.activityLog.update({
+        where: { id: existing.id },
+        data: {
+          minutes: (existing.minutes || 0) + params.minutes,
+          kcal: (existing.kcal || 0) + params.kcal,
+        },
+      });
+    } else {
+      // Crear nuevo registro
+      await this.prisma.activityLog.create({
+        data: {
+          userId: params.userId,
+          date: params.date,
+          minutes: params.minutes,
+          kcal: params.kcal,
+        },
+      });
+    }
+  }
+
+  async getActivityStats(userId: string, startDate: Date, endDate: Date): Promise<any[]> {
+    return await this.prisma.activityLog.findMany({
+      where: {
+        userId,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      orderBy: {
+        date: 'asc',
       },
     });
   }

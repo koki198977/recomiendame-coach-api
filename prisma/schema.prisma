@@ -562,11 +562,15 @@ model WorkoutPlan {
 }
 
 model WorkoutDay {
-  id            String            @id @default(cuid())
-  workoutPlanId String
-  workoutPlan   WorkoutPlan       @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
-  dayIndex      Int
-  exercises     WorkoutExercise[]
+  id              String            @id @default(cuid())
+  workoutPlanId   String
+  workoutPlan     WorkoutPlan       @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
+  dayIndex        Int
+  completed       Boolean           @default(false)
+  completedAt     DateTime?
+  durationMinutes Int?
+  caloriesBurned  Int?
+  exercises       WorkoutExercise[]
 
   @@unique([workoutPlanId, dayIndex])
 }
@@ -587,6 +591,7 @@ model WorkoutExercise {
   equipment    String?
   instructions String? // Text block or JSON string
   videoQuery   String?
+  completed    Boolean    @default(false)
 }
 
 /**

@@ -11,10 +11,17 @@ done
 
 
 echo "✅ Base de datos disponible. Ejecutando Prisma..."
-# Genera client y aplica migraciones (usa `deploy` para idempotente en contenedor)
+# Genera client
 npx prisma generate
-npx prisma db push --accept-data-loss
 
+# Aplica migraciones de forma segura (sin perder datos)
+if [ "$NODE_ENV" = "development" ]; then
+  echo "🔧 Modo desarrollo: usando migrate dev"
+  npx prisma migrate dev --skip-generate
+else
+  echo "🚀 Modo producción: usando migrate deploy"
+  npx prisma migrate deploy
+fi
 
 # Si definiste seed (package.json -> prisma.seed), descomenta:
 # npx prisma db seed || true

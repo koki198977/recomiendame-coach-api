@@ -3,8 +3,11 @@ import { GenerateWeeklyWorkoutPlanUseCase } from '../../core/application/workout
 import { GetWorkoutPlanUseCase } from '../../core/application/workouts/use-cases/get-workout-plan.usecase';
 import { DeleteWorkoutPlanUseCase } from '../../core/application/workouts/use-cases/delete-workout-plan.usecase';
 import { UpdateWorkoutPlanUseCase } from '../../core/application/workouts/use-cases/update-workout-plan.usecase';
+import { CompleteWorkoutUseCase } from '../../core/application/workouts/use-cases/complete-workout.usecase';
+import { GetActivityStatsUseCase } from '../../core/application/workouts/use-cases/get-activity-stats.usecase';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GenerateWorkoutDto } from '../../core/application/workouts/dto/generate-workout.dto';
+import { CompleteWorkoutDto } from '../../core/application/workouts/dto/complete-workout.dto';
 
 @Controller('workouts')
 @UseGuards(JwtAuthGuard)
@@ -14,6 +17,8 @@ export class WorkoutsController {
     private readonly getWorkoutPlan: GetWorkoutPlanUseCase,
     private readonly deleteWorkoutPlan: DeleteWorkoutPlanUseCase,
     private readonly updateWorkoutPlan: UpdateWorkoutPlanUseCase,
+    private readonly completeWorkout: CompleteWorkoutUseCase,
+    private readonly getActivityStats: GetActivityStatsUseCase,
   ) {}
 
   @Post('generate')
@@ -68,5 +73,34 @@ export class WorkoutsController {
     } else {
       throw result.error;
     }
+  }
+
+  @Post('completion')
+  async complete(
+    @Body(new ValidationPipe({ transform: true, whitelist: true })) body: CompleteWorkoutDto,
+    @Request() req: any
+  ) {
+    const userId = req.user.userId ?? req.user.sub;
+    const result = await this.completeWorkout.execute(userId, body);
+    
+    if (result.ok) {
+      return result.value;
+    } else {
+      throw result.error;
+    }
+  }
+
+  @Get('activity-stats')
+  async getActivityStats(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Request() req: any
+  ) {
+    const userId = req.user.userId ?? req.user.sub;
+    return await this.getActivityStats.execute(
+      userId,
+      new Date(startDate),
+      new Date(endDate)
+    );
   }
 }

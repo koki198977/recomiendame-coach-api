@@ -4,6 +4,8 @@ import { GenerateWeeklyWorkoutPlanUseCase } from '../core/application/workouts/u
 import { GetWorkoutPlanUseCase } from '../core/application/workouts/use-cases/get-workout-plan.usecase';
 import { DeleteWorkoutPlanUseCase } from '../core/application/workouts/use-cases/delete-workout-plan.usecase';
 import { UpdateWorkoutPlanUseCase } from '../core/application/workouts/use-cases/update-workout-plan.usecase';
+import { CompleteWorkoutUseCase } from '../core/application/workouts/use-cases/complete-workout.usecase';
+import { GetActivityStatsUseCase } from '../core/application/workouts/use-cases/get-activity-stats.usecase';
 import { WORKOUT_REPOSITORY } from '../core/application/workouts/ports/out.workout-repository.port';
 import { WorkoutPrismaRepository } from '../infrastructure/persistence/prisma/workout.prisma.repository';
 import { WORKOUT_PLANNER_AGENT } from '../core/application/workouts/ports/out.workout-planner-agent.port';
@@ -20,6 +22,8 @@ import { PrismaModule } from '../infrastructure/database/prisma.module';
     GetWorkoutPlanUseCase,
     DeleteWorkoutPlanUseCase,
     UpdateWorkoutPlanUseCase,
+    CompleteWorkoutUseCase,
+    GetActivityStatsUseCase,
     { provide: WORKOUT_REPOSITORY, useClass: WorkoutPrismaRepository },
     { provide: WORKOUT_PLANNER_AGENT, useClass: OpenAIWorkoutPlannerAgent },
     { provide: PROFILE_REPO, useClass: ProfilesPrismaRepository },
