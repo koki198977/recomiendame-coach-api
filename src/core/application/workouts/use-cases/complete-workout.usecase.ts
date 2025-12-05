@@ -30,6 +30,10 @@ export class CompleteWorkoutUseCase {
         return err(new NotFoundException(`No se encontró el día ${dto.dayIndex} en el plan`));
       }
 
+      if (!day.id) {
+        return err(new BadRequestException('El día de entrenamiento no tiene ID válido'));
+      }
+
       // 3. Validar que no esté ya completado
       if (day.completed) {
         return err(new BadRequestException('Este entrenamiento ya fue completado'));
@@ -47,7 +51,7 @@ export class CompleteWorkoutUseCase {
       // 5. Actualizar ejercicios individuales
       for (const exerciseDto of dto.exercises) {
         const exercise = day.exercises.find((e) => e.name === exerciseDto.name);
-        if (exercise) {
+        if (exercise && exercise.id) {
           await this.workoutRepo.updateExerciseCompletion(
             exercise.id,
             exerciseDto.completed,

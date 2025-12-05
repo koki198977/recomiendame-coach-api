@@ -91,7 +91,7 @@ export class WorkoutsController {
   }
 
   @Get('activity-stats')
-  async getActivityStats(
+  async activityStats(
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
     @Request() req: any
