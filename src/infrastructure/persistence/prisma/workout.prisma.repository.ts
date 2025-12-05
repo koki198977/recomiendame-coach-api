@@ -145,6 +145,25 @@ export class WorkoutPrismaRepository implements WorkoutRepositoryPort {
     });
   }
 
+  async updateExercise(exerciseId: string, updates: {
+    completed?: boolean;
+    sets?: number;
+    reps?: string;
+    weight?: string;
+    notes?: string;
+  }): Promise<void> {
+    await this.prisma.workoutExercise.update({
+      where: { id: exerciseId },
+      data: {
+        ...(updates.completed !== undefined && { completed: updates.completed }),
+        ...(updates.sets !== undefined && { sets: updates.sets }),
+        ...(updates.reps !== undefined && { reps: updates.reps }),
+        ...(updates.weight !== undefined && { weight: updates.weight }),
+        ...(updates.notes !== undefined && { notes: updates.notes }),
+      },
+    });
+  }
+
   async logActivity(params: {
     userId: string;
     date: Date;

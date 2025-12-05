@@ -49,12 +49,19 @@ export class CompleteWorkoutDto {
   @Min(0)
   caloriesBurned: number;
 
+  @IsInt()
+  @Min(0)
+  completedExercises: number;
+
+  @IsInt()
+  @Min(0)
+  totalExercises: number;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ExerciseCompletionDto)
   exercises: ExerciseCompletionDto[];
 
   @IsDateString()
-  @IsOptional()
-  completedAt?: string;
+  completedAt: string;
 }

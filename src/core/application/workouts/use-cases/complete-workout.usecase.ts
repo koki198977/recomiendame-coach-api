@@ -39,36 +39,33 @@ export class CompleteWorkoutUseCase {
         return err(new BadRequestException('Este entrenamiento ya fue completado'));
       }
 
-      // 4. Actualizar ejercicios individuales
-      for (const exerciseDto of dto.exercises) {
-        const exercise = day.exercises.find((e) => e.name === exerciseDto.name);
-        if (exercise && exercise.id) {
-          await this.workoutRepo.updateExerciseCompletion(
-            exercise.id,
-            exerciseDto.completed,
-            exerciseDto.notes,
-          );
-        }
-      }
-
-      // 5. Calcular estadísticas
-      const completedExercises = dto.exercises.filter(e => e.completed).length;
-      const totalExercises = dto.exercises.length;
-      const completedAt = dto.completedAt ? new Date(dto.completedAt) : new Date();
-
-      // 6. Actualizar el día como completado
+      // 4. Actualizar el día como completado
       const updatedDay = await this.workoutRepo.completeWorkoutDay({
         workoutDayId: day.id,
         completed: true,
-        completedAt,
+        completedAt: new Date(dto.completedAt),
         durationMinutes: dto.durationMinutes,
         caloriesBurned: dto.caloriesBurned,
       });
 
-      // 7. Registrar calorías en ActivityLog
+      // 5. Actualizar ejercicios individuales (incluyendo sets, reps, weight modificados)
+      for (const exerciseDto of dto.exercises) {
+        const exercise = day.exercises.find((e) => e.name === exerciseDto.name);
+        if (exercise && exercise.id) {
+          await this.workoutRepo.updateExercise(exercise.id, {
+            completed: exerciseDto.completed,
+            sets: exerciseDto.sets,
+            reps: exerciseDto.reps,
+            weight: exerciseDto.weight?.toString(),
+            notes: exerciseDto.notes,
+          });
+        }
+      }
+
+      // 6. Registrar calorías en ActivityLog
       await this.workoutRepo.logActivity({
         userId,
-        date: completedAt,
+        date: new Date(dto.completedAt),
         minutes: dto.durationMinutes,
         kcal: dto.caloriesBurned,
       });
@@ -77,8 +74,8 @@ export class CompleteWorkoutUseCase {
         success: true,
         workoutDay: updatedDay,
         caloriesBurned: dto.caloriesBurned,
-        completedExercises,
-        totalExercises,
+        completedExercises: dto.completedExercises,
+        totalExercises: dto.totalExercises,
       });
     } catch (error: any) {
       return err(error);

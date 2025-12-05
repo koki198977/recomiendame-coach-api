@@ -17,6 +17,13 @@ export interface WorkoutRepositoryPort {
     caloriesBurned: number;
   }): Promise<any>;
   updateExerciseCompletion(exerciseId: string, completed: boolean, notes?: string): Promise<void>;
+  updateExercise(exerciseId: string, updates: {
+    completed?: boolean;
+    sets?: number;
+    reps?: string;
+    weight?: string;
+    notes?: string;
+  }): Promise<void>;
   logActivity(params: {
     userId: string;
     date: Date;
