@@ -3,6 +3,7 @@ export interface ProfileRepoPort {
   update(userId: string, patch: {
     sex?: string; birthDate?: string; heightCm?: number; weightKg?: number;
     activityLevel?: string; country?: string; budgetLevel?: number; cookTimePerMeal?: number;
+    nutritionGoal?: string; targetWeightKg?: number; timeFrame?: string; intensity?: string; currentMotivation?: string;
   }): Promise<void>;
 
   replaceAllergies(userId: string, allergyIds: number[]): Promise<void>;
