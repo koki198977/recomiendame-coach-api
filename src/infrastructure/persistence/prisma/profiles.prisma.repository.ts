@@ -41,11 +41,15 @@ export class ProfilesPrismaRepository {
 
     // Plain shape esperado por el controlador
     return {
+      userId: p?.id ?? userId,
       sex: p?.profile?.sex ?? 'UNSPECIFIED',
       birthDate: p?.profile?.birthDate ?? null,
       heightCm: p?.profile?.heightCm ?? null,
       weightKg: p?.profile?.weightKg ?? null,
       activityLevel: p?.profile?.activityLevel ?? 'SEDENTARY',
+      country: p?.profile?.country ?? null,
+      budgetLevel: p?.profile?.budgetLevel ?? null,
+      cookTimePerMeal: p?.profile?.cookTimePerMeal ?? null,
       goal: p?.goals?.[0]
         ? { goalType: p.goals[0].goalType }
         : null,
