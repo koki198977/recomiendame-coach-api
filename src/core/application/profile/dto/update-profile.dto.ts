@@ -1,9 +1,29 @@
-import { IsDateString, IsEnum, IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export enum SexDto { MALE='MALE', FEMALE='FEMALE', OTHER='OTHER', UNSPECIFIED='UNSPECIFIED' }
 export enum ActivityLevelDto { SEDENTARY='SEDENTARY', LIGHT='LIGHT', MODERATE='MODERATE', ACTIVE='ACTIVE', VERY_ACTIVE='VERY_ACTIVE' }
+export enum NutritionGoalDto { 
+  LOSE_WEIGHT='LOSE_WEIGHT', 
+  GAIN_WEIGHT='GAIN_WEIGHT', 
+  MAINTAIN_WEIGHT='MAINTAIN_WEIGHT', 
+  GAIN_MUSCLE='GAIN_MUSCLE', 
+  IMPROVE_HEALTH='IMPROVE_HEALTH' 
+}
+export enum TimeFrameDto { 
+  ONE_MONTH='1_MONTH', 
+  THREE_MONTHS='3_MONTHS', 
+  SIX_MONTHS='6_MONTHS', 
+  ONE_YEAR='1_YEAR', 
+  LONG_TERM='LONG_TERM' 
+}
+export enum IntensityDto { 
+  LOW='LOW', 
+  MODERATE='MODERATE', 
+  HIGH='HIGH' 
+}
 
 export class UpdateProfileDto {
+  // Campos básicos existentes
   @IsOptional() @IsEnum(SexDto) sex?: SexDto;
   @IsOptional() @IsDateString() birthDate?: string;           // YYYY-MM-DD
   @IsOptional() @IsInt() @Min(80) @Max(250) heightCm?: number;
@@ -12,4 +32,11 @@ export class UpdateProfileDto {
   @IsOptional() country?: string;
   @IsOptional() @IsInt() @Min(0) @Max(3) budgetLevel?: number;
   @IsOptional() @IsInt() @Min(5) @Max(180) cookTimePerMeal?: number;
+
+  // Nuevos campos para personalización de planes
+  @IsOptional() @IsEnum(NutritionGoalDto) nutritionGoal?: NutritionGoalDto;
+  @IsOptional() @IsNumber() @Min(20) @Max(400) targetWeightKg?: number;
+  @IsOptional() @IsEnum(TimeFrameDto) timeFrame?: TimeFrameDto;
+  @IsOptional() @IsEnum(IntensityDto) intensity?: IntensityDto;
+  @IsOptional() @IsString() currentMotivation?: string;
 }

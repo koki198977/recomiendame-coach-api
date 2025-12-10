@@ -53,12 +53,20 @@ export class ProfilesPrismaRepository {
       conditions: (p?.conditions ?? []).map(c => ({ id: c.conditionId, code: c.condition.code, label: c.condition.label })),
       cuisinesLike: (p?.cuisinePrefs ?? []).filter(x => x.kind === 'LIKE').map(x => ({ id: x.cuisineId, name: x.cuisine.name })),
       cuisinesDislike: (p?.cuisinePrefs ?? []).filter(x => x.kind === 'DISLIKE').map(x => ({ id: x.cuisineId, name: x.cuisine.name })),
+      
+      // Nuevos campos
+      nutritionGoal: p?.profile?.nutritionGoal ?? null,
+      targetWeightKg: p?.profile?.targetWeightKg ?? null,
+      timeFrame: p?.profile?.timeFrame ?? null,
+      intensity: p?.profile?.intensity ?? null,
+      currentMotivation: p?.profile?.currentMotivation ?? null,
     };
   }
 
   async update(userId: string, patch: {
     sex?: string; birthDate?: string; heightCm?: number; weightKg?: number;
     activityLevel?: string; country?: string; budgetLevel?: number; cookTimePerMeal?: number;
+    nutritionGoal?: string; targetWeightKg?: number; timeFrame?: string; intensity?: string; currentMotivation?: string;
   }): Promise<void> {
     await this.prisma.userProfile.upsert({
       where: { userId },
@@ -71,6 +79,11 @@ export class ProfilesPrismaRepository {
         country: patch.country,
         budgetLevel: patch.budgetLevel,
         cookTimePerMeal: patch.cookTimePerMeal,
+        nutritionGoal: patch.nutritionGoal as any,
+        targetWeightKg: patch.targetWeightKg as any,
+        timeFrame: patch.timeFrame as any,
+        intensity: patch.intensity as any,
+        currentMotivation: patch.currentMotivation,
       },
       create: {
         userId,
@@ -82,6 +95,11 @@ export class ProfilesPrismaRepository {
         country: patch.country ?? null,
         budgetLevel: patch.budgetLevel ?? null,
         cookTimePerMeal: patch.cookTimePerMeal ?? null,
+        nutritionGoal: patch.nutritionGoal as any ?? null,
+        targetWeightKg: (patch.targetWeightKg as any) ?? null,
+        timeFrame: patch.timeFrame as any ?? null,
+        intensity: patch.intensity as any ?? null,
+        currentMotivation: patch.currentMotivation ?? null,
       },
     });
   }

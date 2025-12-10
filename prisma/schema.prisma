@@ -54,6 +54,28 @@ enum UserRole {
   ADMIN
 }
 
+enum NutritionGoal {
+  LOSE_WEIGHT
+  GAIN_WEIGHT
+  MAINTAIN_WEIGHT
+  GAIN_MUSCLE
+  IMPROVE_HEALTH
+}
+
+enum TimeFrame {
+  ONE_MONTH
+  THREE_MONTHS
+  SIX_MONTHS
+  ONE_YEAR
+  LONG_TERM
+}
+
+enum Intensity {
+  LOW
+  MODERATE
+  HIGH
+}
+
 
 /**
  * ===== Modelos base de usuarios/social =====
@@ -244,6 +266,14 @@ model UserProfile {
   country               String?
   budgetLevel           Int?
   cookTimePerMeal       Int?
+  
+  // Nuevos campos para personalización de planes
+  nutritionGoal         NutritionGoal?
+  targetWeightKg        Decimal?         @db.Decimal(5, 2)
+  timeFrame             TimeFrame?
+  intensity             Intensity?
+  currentMotivation     String?
+  
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   PrivacySettings       PrivacySettings? @relation(fields: [privacySettingsUserId], references: [userId])
