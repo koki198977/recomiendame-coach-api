@@ -21,6 +21,18 @@ export class MeProfileController {
 
   @Post('profile')
   update(@Body() dto: UpdateProfileDto, @Req() req: any) {
+    console.log('🚀 POST /me/profile LLAMADO!'); // Log básico para confirmar que llega
+    // 🔍 DEBUG: Ver qué llega al controlador
+    console.log('=== CONTROLLER DEBUG ===');
+    console.log('userId:', req.user.userId ?? req.user.sub);
+    console.log('body recibido:', JSON.stringify(dto, null, 2));
+    console.log('dto.nutritionGoal:', dto.nutritionGoal);
+    console.log('dto.targetWeightKg:', dto.targetWeightKg);
+    console.log('dto.timeFrame:', dto.timeFrame);
+    console.log('dto.intensity:', dto.intensity);
+    console.log('dto.currentMotivation:', dto.currentMotivation);
+    console.log('========================');
+    
     return this.updateUC.execute(req.user.userId ?? req.user.sub, dto);
   }
 
