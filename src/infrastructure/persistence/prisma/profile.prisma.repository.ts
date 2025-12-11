@@ -5,6 +5,9 @@ import { PROFILE_REPO, ProfileRepoPort } from '../../../core/application/profile
 
 type Sex = 'MALE' | 'FEMALE' | 'OTHER' | 'UNSPECIFIED';
 type ActivityLevel = 'SEDENTARY' | 'LIGHT' | 'MODERATE' | 'ACTIVE' | 'VERY_ACTIVE';
+type NutritionGoal = 'LOSE_WEIGHT' | 'GAIN_WEIGHT' | 'MAINTAIN_WEIGHT' | 'GAIN_MUSCLE' | 'IMPROVE_HEALTH';
+type TimeFrame = 'ONE_MONTH' | 'THREE_MONTHS' | 'SIX_MONTHS' | 'ONE_YEAR' | 'LONG_TERM';
+type Intensity = 'LOW' | 'MODERATE' | 'HIGH';
 
 type UpdatePatch = {
   sex?: string;                 // "MALE" | "FEMALE" | "OTHER" | "UNSPECIFIED"
@@ -15,6 +18,11 @@ type UpdatePatch = {
   country?: string | null;
   budgetLevel?: number | null;
   cookTimePerMeal?: number | null;
+  nutritionGoal?: string;
+  targetWeightKg?: number | null;
+  timeFrame?: string;
+  intensity?: string;
+  currentMotivation?: string | null;
 };
 
 function toSexEnum(value?: string): Sex | null | undefined {
@@ -40,6 +48,56 @@ function toActivityEnum(value?: string): ActivityLevel | null | undefined {
   };
   const v = allowed[value.toUpperCase()];
   if (!v) throw new BadRequestException(`activityLevel inválido: ${value}`);
+  return v;
+}
+
+function toNutritionGoalEnum(value?: string): NutritionGoal | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const allowed: Record<string, NutritionGoal> = {
+    LOSE_WEIGHT: 'LOSE_WEIGHT',
+    GAIN_WEIGHT: 'GAIN_WEIGHT',
+    MAINTAIN_WEIGHT: 'MAINTAIN_WEIGHT',
+    GAIN_MUSCLE: 'GAIN_MUSCLE',
+    IMPROVE_HEALTH: 'IMPROVE_HEALTH',
+  };
+  const v = allowed[value.toUpperCase()];
+  if (!v) throw new BadRequestException(`nutritionGoal inválido: ${value}`);
+  return v;
+}
+
+function toTimeFrameEnum(value?: string): TimeFrame | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  
+  // Mapeo flexible para aceptar tanto los valores del DTO como los del Enum de Prisma
+  const allowed: Record<string, TimeFrame> = {
+    '1_MONTH': 'ONE_MONTH',
+    '3_MONTHS': 'THREE_MONTHS',
+    '6_MONTHS': 'SIX_MONTHS',
+    '1_YEAR': 'ONE_YEAR',
+    'LONG_TERM': 'LONG_TERM',
+    // Fallback por si llega en formato Prisma
+    'ONE_MONTH': 'ONE_MONTH',
+    'THREE_MONTHS': 'THREE_MONTHS',
+    'SIX_MONTHS': 'SIX_MONTHS',
+    'ONE_YEAR': 'ONE_YEAR',
+  };
+  const v = allowed[value.toUpperCase()];
+  if (!v) throw new BadRequestException(`timeFrame inválido: ${value}`);
+  return v;
+}
+
+function toIntensityEnum(value?: string): Intensity | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const allowed: Record<string, Intensity> = {
+    LOW: 'LOW',
+    MODERATE: 'MODERATE',
+    HIGH: 'HIGH',
+  };
+  const v = allowed[value.toUpperCase()];
+  if (!v) throw new BadRequestException(`intensity inválido: ${value}`);
   return v;
 }
 
@@ -69,6 +127,11 @@ export class ProfilePrismaRepository implements ProfileRepoPort {
       country: p?.country ?? null,
       budgetLevel: p?.budgetLevel ?? null,
       cookTimePerMeal: p?.cookTimePerMeal ?? null,
+      nutritionGoal: p?.nutritionGoal ?? null,
+      targetWeightKg: p?.targetWeightKg != null ? Number(p.targetWeightKg) : null,
+      timeFrame: p?.timeFrame ?? null,
+      intensity: p?.intensity ?? null,
+      currentMotivation: p?.currentMotivation ?? null,
 
       allergies: ua.map(a => ({ id: a.allergyId, name: a.allergy.name })),
       conditions: uc.map(c => ({ id: c.conditionId, code: c.condition.code, label: c.condition.label })),
@@ -83,22 +146,30 @@ export class ProfilePrismaRepository implements ProfileRepoPort {
   async update(userId: string, patch: UpdatePatch): Promise<void> {
     const sexEnum = toSexEnum(patch.sex);
     const actEnum = toActivityEnum(patch.activityLevel);
+    const goalEnum = toNutritionGoalEnum(patch.nutritionGoal);
+    const timeEnum = toTimeFrameEnum(patch.timeFrame);
+    const intEnum = toIntensityEnum(patch.intensity);
 
     await this.prisma.userProfile.upsert({
-        where: { userId },
-        update: {
-        sex:           sexEnum,                                           // enum | null | undefined
+      where: { userId },
+      update: {
+        sex:           sexEnum,
         birthDate:     patch.birthDate ? new Date(patch.birthDate) : undefined,
         heightCm:      patch.heightCm ?? undefined,
         weightKg:      patch.weightKg ?? undefined,
-        activityLevel: actEnum,                                           // enum | null | undefined
+        activityLevel: actEnum,
         country:       patch.country ?? undefined,
         budgetLevel:   patch.budgetLevel ?? undefined,
         cookTimePerMeal: patch.cookTimePerMeal ?? undefined,
-        },
-        create: {
+        nutritionGoal: goalEnum,
+        targetWeightKg: patch.targetWeightKg ?? undefined,
+        timeFrame:     timeEnum,
+        intensity:     intEnum,
+        currentMotivation: patch.currentMotivation ?? undefined,
+      },
+      create: {
         userId,
-        sex:           sexEnum ?? null,                                   // en create, si undefined => null
+        sex:           sexEnum ?? null,
         birthDate:     patch.birthDate ? new Date(patch.birthDate) : null,
         heightCm:      patch.heightCm ?? null,
         weightKg:      patch.weightKg ?? null,
@@ -106,9 +177,14 @@ export class ProfilePrismaRepository implements ProfileRepoPort {
         country:       patch.country ?? null,
         budgetLevel:   patch.budgetLevel ?? null,
         cookTimePerMeal: patch.cookTimePerMeal ?? null,
-        },
+        nutritionGoal: goalEnum ?? null,
+        targetWeightKg: patch.targetWeightKg ?? null,
+        timeFrame:     timeEnum ?? null,
+        intensity:     intEnum ?? null,
+        currentMotivation: patch.currentMotivation ?? null,
+      },
     });
-    }
+  }
 
   /**
    * Reemplaza por completo las alergias del usuario (IDs del catálogo Allergy).
