@@ -59,11 +59,11 @@ export class ProfilesPrismaRepository {
       cuisinesDislike: (p?.cuisinePrefs ?? []).filter(x => x.kind === 'DISLIKE').map(x => ({ id: x.cuisineId, name: x.cuisine.name })),
       
       // Nuevos campos
-      nutritionGoal: p?.profile?.nutritionGoal ?? null,
-      targetWeightKg: p?.profile?.targetWeightKg ?? null,
-      timeFrame: this.mapTimeFrameFromDb(p?.profile?.timeFrame?.toString()) ?? null,
-      intensity: p?.profile?.intensity ?? null,
-      currentMotivation: p?.profile?.currentMotivation ?? null,
+      nutritionGoal: (p?.profile as any)?.nutritionGoal ?? null,
+      targetWeightKg: (p?.profile as any)?.targetWeightKg ?? null,
+      timeFrame: this.mapTimeFrameFromDb((p?.profile as any)?.timeFrame?.toString()) ?? null,
+      intensity: (p?.profile as any)?.intensity ?? null,
+      currentMotivation: (p?.profile as any)?.currentMotivation ?? null,
     };
   }
 
@@ -124,8 +124,8 @@ export class ProfilesPrismaRepository {
         targetWeightKg: patch.targetWeightKg as any,
         timeFrame: this.mapTimeFrameToDb(patch.timeFrame) as any,
         intensity: patch.intensity as any,
-        currentMotivation: patch.currentMotivation,
-      },
+        currentMotivation: patch.currentMotivation as any,
+      } as any,
       create: {
         userId,
         sex: patch.sex as any,
@@ -140,8 +140,8 @@ export class ProfilesPrismaRepository {
         targetWeightKg: (patch.targetWeightKg as any) ?? null,
         timeFrame: this.mapTimeFrameToDb(patch.timeFrame) as any ?? null,
         intensity: patch.intensity as any ?? null,
-        currentMotivation: patch.currentMotivation ?? null,
-      },
+        currentMotivation: (patch.currentMotivation as any) ?? null,
+      } as any,
     });
   }
 
