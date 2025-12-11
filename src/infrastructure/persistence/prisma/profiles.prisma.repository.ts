@@ -96,6 +96,19 @@ export class ProfilesPrismaRepository {
     activityLevel?: string; country?: string; budgetLevel?: number; cookTimePerMeal?: number;
     nutritionGoal?: string; targetWeightKg?: number; timeFrame?: string; intensity?: string; currentMotivation?: string;
   }): Promise<void> {
+    
+    // 🔍 DEBUG: Ver qué datos llegan
+    console.log('=== UPDATE PROFILE DEBUG ===');
+    console.log('userId:', userId);
+    console.log('patch recibido:', JSON.stringify(patch, null, 2));
+    console.log('nutritionGoal:', patch.nutritionGoal);
+    console.log('targetWeightKg:', patch.targetWeightKg);
+    console.log('timeFrame:', patch.timeFrame);
+    console.log('intensity:', patch.intensity);
+    console.log('currentMotivation:', patch.currentMotivation);
+    console.log('timeFrame mapeado:', this.mapTimeFrameToDb(patch.timeFrame));
+    console.log('=============================');
+
     await this.prisma.userProfile.upsert({
       where: { userId },
       update: {
