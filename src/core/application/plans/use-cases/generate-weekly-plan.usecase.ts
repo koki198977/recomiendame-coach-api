@@ -62,6 +62,12 @@ export class GenerateWeeklyPlanUseCase {
       allergies: (profile.allergies ?? []).map((a) => a.name),
       cuisinesLike: (profile.cuisinesLike ?? []).map((c) => c.name),
       cuisinesDislike: (profile.cuisinesDislike ?? []).map((c) => c.name),
+      cookTimePerMeal: profile.cookTimePerMeal,
+      nutritionGoal: profile.nutritionGoal,
+      targetWeightKg: profile.targetWeightKg,
+      timeFrame: profile.timeFrame,
+      intensity: profile.intensity,
+      currentMotivation: profile.currentMotivation,
     };
 
     // Llamada al agente (OpenAI u otro motor) para proponer las comidas de la semana

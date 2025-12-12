@@ -155,7 +155,17 @@ export class PlanPrismaRepository implements PlanRepositoryPort {
 
   async regenerateDayWithAgent(input: {
     planId: string; dayIndex: number; userId: string;
-    preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] };
+    preferences?: {
+      allergies?: string[];
+      cuisinesLike?: string[];
+      cuisinesDislike?: string[];
+      cookTimePerMeal?: number | null;
+      nutritionGoal?: string | null;
+      targetWeightKg?: number | null;
+      timeFrame?: string | null;
+      intensity?: string | null;
+      currentMotivation?: string | null;
+    };
   }): Promise<{ meals: Plan['days'][number]['meals'] }> {
     const { planId, dayIndex, userId, preferences } = input;
 
@@ -184,7 +194,17 @@ export class PlanPrismaRepository implements PlanRepositoryPort {
   /** Orquesta: calcula target, pide swap y persiste */
   async swapMealWithAgent(input: {
     planId: string; dayIndex: number; mealIndex: number; userId: string;
-    preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] };
+    preferences?: {
+      allergies?: string[];
+      cuisinesLike?: string[];
+      cuisinesDislike?: string[];
+      cookTimePerMeal?: number | null;
+      nutritionGoal?: string | null;
+      targetWeightKg?: number | null;
+      timeFrame?: string | null;
+      intensity?: string | null;
+      currentMotivation?: string | null;
+    };
   }): Promise<{ meal: Plan['days'][number]['meals'][number] }> {
     const { planId, dayIndex, mealIndex, userId, preferences } = input;
     const plan = await this.prisma.plan.findUnique({

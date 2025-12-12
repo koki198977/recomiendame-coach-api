@@ -23,6 +23,12 @@ export class SwapMealUseCase {
         allergies: (prefs.allergies ?? []).map(a => a.name),
         cuisinesLike: (prefs.cuisinesLike ?? []).map(c => c.name),
         cuisinesDislike: (prefs.cuisinesDislike ?? []).map(c => c.name),
+        cookTimePerMeal: prefs.cookTimePerMeal,
+        nutritionGoal: prefs.nutritionGoal,
+        targetWeightKg: prefs.targetWeightKg,
+        timeFrame: prefs.timeFrame,
+        intensity: prefs.intensity,
+        currentMotivation: prefs.currentMotivation,
       },
     });
 

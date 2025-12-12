@@ -10,6 +10,12 @@ export interface MealPlannerAgentPort {
       allergies?: string[];
       cuisinesLike?: string[];
       cuisinesDislike?: string[];
+      cookTimePerMeal?: number | null;
+      nutritionGoal?: string | null;
+      targetWeightKg?: number | null;
+      timeFrame?: string | null;
+      intensity?: string | null;
+      currentMotivation?: string | null;
     };
   }): Promise<{ days: PlanDay[]; notes?: string }>;
 
@@ -18,7 +24,17 @@ export interface MealPlannerAgentPort {
     weekStart: Date;
     dayIndex: number;
     macros: Macros;
-    preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] };
+    preferences?: {
+      allergies?: string[];
+      cuisinesLike?: string[];
+      cuisinesDislike?: string[];
+      cookTimePerMeal?: number | null;
+      nutritionGoal?: string | null;
+      targetWeightKg?: number | null;
+      timeFrame?: string | null;
+      intensity?: string | null;
+      currentMotivation?: string | null;
+    };
     avoidTitles?: string[];
   }): Promise<{ day: PlanDay }>;
 
@@ -28,7 +44,17 @@ export interface MealPlannerAgentPort {
     dayIndex: number;
     macros: Macros;
     target: { slot: PlanDay['meals'][number]['slot']; kcal: number };
-    preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] };
+    preferences?: {
+      allergies?: string[];
+      cuisinesLike?: string[];
+      cuisinesDislike?: string[];
+      cookTimePerMeal?: number | null;
+      nutritionGoal?: string | null;
+      targetWeightKg?: number | null;
+      timeFrame?: string | null;
+      intensity?: string | null;
+      currentMotivation?: string | null;
+    };
     avoidTitles?: string[];
   }): Promise<{ meal: PlanDay['meals'][number] }>;
 }

@@ -211,7 +211,17 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
 
   private commonContext(
     macros: { kcalTarget: number; protein_g: number; carbs_g: number; fat_g: number },
-    preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] },
+    preferences?: {
+      allergies?: string[];
+      cuisinesLike?: string[];
+      cuisinesDislike?: string[];
+      cookTimePerMeal?: number | null;
+      nutritionGoal?: string | null;
+      targetWeightKg?: number | null;
+      timeFrame?: string | null;
+      intensity?: string | null;
+      currentMotivation?: string | null;
+    },
     avoidTitles?: string[],
   ): string {
     const avoidNormalized = [...toLowerSet(avoidTitles)];
@@ -228,6 +238,35 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
       `Objetivo calórico por día: ${macros.kcalTarget} kcal. Macros aprox: P ${macros.protein_g}g / C ${macros.carbs_g}g / G ${macros.fat_g}g.`,
       `Restringe alergias: ${(preferences?.allergies ?? []).join(', ') || 'ninguna'}.`,
     ];
+
+    // Reglas de tiempo de cocina
+    if (preferences?.cookTimePerMeal) {
+      baseRules.push(
+        `⏱️ TIEMPO DE COCINA: Maximiza recetas que se preparen en ${preferences.cookTimePerMeal} minutos o menos.`,
+        'Prioriza preparaciones sencillas y rápidas si el tiempo es corto.',
+      );
+    }
+
+    // Reglas de Objetivo Nutricional
+    if (preferences?.nutritionGoal) {
+      const goalMap: Record<string, string> = {
+        'LOSE_WEIGHT': '📉 OBJETIVO: PERDER PESO. Prioriza alimentos saciantes, altos en fibra, verduras y buena proteína. Evita excesos de carbos refinados.',
+        'GAIN_WEIGHT': '📈 OBJETIVO: GANAR PESO. Prioriza densidad calórica saludable (frutos secos, aguacate, aceite de oliva, más carbohidratos complejos).',
+        'MAINTAIN_WEIGHT': '⚖️ OBJETIVO: MANTENER PESO. Balance general saludable.',
+        'GAIN_MUSCLE': '💪 OBJETIVO: GANAR MÚSCULO. Asegura ingesta de proteínas de alta biodisponibilidad en cada comida. Carbohidratos para energía.',
+        'IMPROVE_HEALTH': '❤️ OBJETIVO: SALUD GENERAL. Enfócate en micronutrientes, variedad de colores en vegetales, grasas saludables.',
+      };
+      const goalInst = goalMap[preferences.nutritionGoal] ?? `Objetivo: ${preferences.nutritionGoal}`;
+      baseRules.push(goalInst);
+    }
+
+    // Reglas de Motivación
+    if (preferences?.currentMotivation) {
+      baseRules.push(
+        `💡 MOTIVACIÓN DEL USUARIO: "${preferences.currentMotivation}".`,
+        'Ten en cuenta esto para seleccionar platos que se alineen con este deseo (ej. si quiere energía, evita comidas pesadas que den sueño).',
+      );
+    }
     
     // Manejo de preferencias de cocina
     const cuisinesLike = preferences?.cuisinesLike ?? [];
@@ -338,7 +377,17 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
     userId: string;
     weekStart: Date;
     macros: { kcalTarget: number; protein_g: number; carbs_g: number; fat_g: number };
-    preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] };
+    preferences?: {
+      allergies?: string[];
+      cuisinesLike?: string[];
+      cuisinesDislike?: string[];
+      cookTimePerMeal?: number | null;
+      nutritionGoal?: string | null;
+      targetWeightKg?: number | null;
+      timeFrame?: string | null;
+      intensity?: string | null;
+      currentMotivation?: string | null;
+    };
   }): Promise<{ days: PlanDay[]; notes?: string }> {
     try {
       // títulos de 6 semanas para anti-repetición
@@ -552,7 +601,17 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
     weekStart: Date;
     dayIndex: number;
     macros: { kcalTarget: number; protein_g: number; carbs_g: number; fat_g: number };
-    preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] };
+    preferences?: {
+      allergies?: string[];
+      cuisinesLike?: string[];
+      cuisinesDislike?: string[];
+      cookTimePerMeal?: number | null;
+      nutritionGoal?: string | null;
+      targetWeightKg?: number | null;
+      timeFrame?: string | null;
+      intensity?: string | null;
+      currentMotivation?: string | null;
+    };
     avoidTitles?: string[];
   }): Promise<{ day: PlanDay }> {
     try {
@@ -614,7 +673,17 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
     dayIndex: number;
     macros: { kcalTarget: number; protein_g: number; carbs_g: number; fat_g: number };
     target: { slot: PlanDay['meals'][number]['slot']; kcal: number };
-    preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] };
+    preferences?: {
+      allergies?: string[];
+      cuisinesLike?: string[];
+      cuisinesDislike?: string[];
+      cookTimePerMeal?: number | null;
+      nutritionGoal?: string | null;
+      targetWeightKg?: number | null;
+      timeFrame?: string | null;
+      intensity?: string | null;
+      currentMotivation?: string | null;
+    };
     avoidTitles?: string[];
   }): Promise<{ meal: PlanDay['meals'][number] }> {
     try {

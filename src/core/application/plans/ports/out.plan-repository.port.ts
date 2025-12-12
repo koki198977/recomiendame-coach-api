@@ -17,7 +17,17 @@ export interface PlanRepositoryPort {
     planId: string;
     dayIndex: number;
     userId: string;
-    preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] };
+    preferences?: {
+      allergies?: string[];
+      cuisinesLike?: string[];
+      cuisinesDislike?: string[];
+      cookTimePerMeal?: number | null;
+      nutritionGoal?: string | null;
+      targetWeightKg?: number | null;
+      timeFrame?: string | null;
+      intensity?: string | null;
+      currentMotivation?: string | null;
+    };
   }): Promise<{ meals: Plan['days'][number]['meals'] }>;
 
   swapMealWithAgent(input: {
@@ -25,7 +35,17 @@ export interface PlanRepositoryPort {
     dayIndex: number;
     mealIndex: number;
     userId: string;
-    preferences?: { allergies?: string[]; cuisinesLike?: string[]; cuisinesDislike?: string[] };
+    preferences?: {
+      allergies?: string[];
+      cuisinesLike?: string[];
+      cuisinesDislike?: string[];
+      cookTimePerMeal?: number | null;
+      nutritionGoal?: string | null;
+      targetWeightKg?: number | null;
+      timeFrame?: string | null;
+      intensity?: string | null;
+      currentMotivation?: string | null;
+    };
   }): Promise<{ meal: Plan['days'][number]['meals'][number] }>;
   getShoppingList(planId: string): Promise<Array<{category: string|null, name: string, qty: number|null, unit: string|null}>>;
 }
