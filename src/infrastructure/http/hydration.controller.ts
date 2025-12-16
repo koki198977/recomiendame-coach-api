@@ -4,6 +4,7 @@ import { LogWaterIntakeUseCase } from '../../core/application/hydration/use-case
 import { GetHydrationStatsUseCase } from '../../core/application/hydration/use-cases/get-hydration-stats.usecase';
 import { SetHydrationGoalUseCase } from '../../core/application/hydration/use-cases/set-hydration-goal.usecase';
 import { CalculateRecommendedHydrationUseCase } from '../../core/application/hydration/use-cases/calculate-recommended-hydration.usecase';
+import { PrismaService } from '../database/prisma.service';
 
 @Controller('hydration')
 @UseGuards(JwtAuthGuard)
@@ -13,6 +14,7 @@ export class HydrationController {
     private readonly getHydrationStats: GetHydrationStatsUseCase,
     private readonly setHydrationGoal: SetHydrationGoalUseCase,
     private readonly calculateRecommended: CalculateRecommendedHydrationUseCase,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Post('log')
@@ -238,6 +240,30 @@ export class HydrationController {
       return result.value;
     } else {
       throw result.error;
+    }
+  }
+
+  @Delete('goal')
+  async deleteHydrationGoal(@Request() req: any) {
+    const userId = req.user.userId ?? req.user.sub;
+    
+    try {
+      // Eliminar objetivo usando raw SQL
+      await this.prisma.$executeRaw`
+        UPDATE "User" SET "hydrationGoal" = NULL WHERE id = ${userId}
+      `;
+
+      return {
+        success: true,
+        message: 'Objetivo de hidratación eliminado correctamente',
+        userId,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error eliminando objetivo de hidratación',
+        error: error.message,
+      };
     }
   }
 
