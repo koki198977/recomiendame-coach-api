@@ -241,6 +241,47 @@ export class HydrationController {
     }
   }
 
+  @Get('plan-status')
+  async getHydrationPlanStatus(@Request() req: any) {
+    const userId = req.user.userId ?? req.user.sub;
+    
+    // Verificar si tiene plan configurado
+    const statsResult = await this.getHydrationStats.execute({ userId });
+    
+    if (statsResult.ok) {
+      const hasGoal = statsResult.value.goal !== null;
+      const goal = statsResult.value.goal;
+      
+      return {
+        hasPlan: hasGoal,
+        goal: goal ? {
+          dailyTargetMl: goal.dailyTargetMl,
+          isActive: goal.isActive,
+          reminderIntervalMinutes: goal.reminderIntervalMinutes,
+          startTime: goal.startTime,
+          endTime: goal.endTime,
+        } : null,
+        currentProgress: statsResult.value.dailyAnalysis,
+        recommendations: hasGoal ? [] : [
+          'Configura tu objetivo personalizado de hidratación',
+          'Basado en tu peso y actividad física',
+          'Recibe recordatorios inteligentes',
+        ],
+        nextSteps: hasGoal ? [
+          'Registra tu consumo de agua',
+          'Mantén tu objetivo diario',
+          'Revisa tus estadísticas',
+        ] : [
+          'Calcula tu objetivo recomendado',
+          'Configura recordatorios',
+          'Comienza a registrar tu consumo',
+        ],
+      };
+    } else {
+      throw statsResult.error;
+    }
+  }
+
   @Get('suggestion')
   async getHydrationSuggestion(@Request() req: any) {
     const userId = req.user.userId ?? req.user.sub;

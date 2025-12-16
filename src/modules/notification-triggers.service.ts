@@ -143,7 +143,13 @@ export class NotificationTriggersService {
 
     for (const user of users) {
       const totalMl = user.hydrationLogs.reduce((sum, log) => sum + log.ml, 0);
-      const goal = user.hydrationGoal ? (user.hydrationGoal as any).dailyMl || 2000 : 2000;
+      
+      // Obtener objetivo de hidratación usando raw SQL
+      const goalResult = await this.prisma.$queryRaw<Array<{ hydrationGoal: any }>>`
+        SELECT "hydrationGoal" FROM "User" WHERE id = ${user.id}
+      `;
+      
+      const goal = goalResult[0]?.hydrationGoal?.dailyTargetMl || 2000;
 
       if (totalMl < goal * 0.75) { // menos del 75% del objetivo
         const notification: SmartNotification = {
@@ -410,6 +416,61 @@ export class NotificationTriggersService {
     }
   }
 
+  // 💧 NOTIFICACIÓN PARA CONFIGURAR PLAN DE HIDRATACIÓN
+  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  async checkMissingHydrationPlan() {
+    // Usar raw SQL para evitar problemas de tipos con hydrationGoal
+    const usersWithoutPlan = await this.prisma.$queryRaw<Array<{
+      id: string;
+      email: string;
+      createdAt: Date;
+    }>>`
+      SELECT id, email, "createdAt"
+      FROM "User" 
+      WHERE "hydrationGoal" IS NULL 
+      AND "createdAt" <= ${new Date(Date.now() - 24 * 60 * 60 * 1000)}
+    `;
+
+    for (const user of usersWithoutPlan) {
+      // Verificar si ha usado la app
+      const profile = await this.prisma.userProfile.findUnique({
+        where: { userId: user.id },
+      });
+
+      const recentHydrationLogs = await this.prisma.hydrationLog.count({
+        where: {
+          userId: user.id,
+          date: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          },
+        },
+      });
+
+      const hasUsedApp = recentHydrationLogs > 0 || 
+                        (profile?.weightKg && profile?.activityLevel);
+
+      if (hasUsedApp) {
+        const notification: SmartNotification = {
+          title: '💧 ¡Personalicemos tu hidratación!',
+          body: 'Basándome en tu perfil, puedo calcular tu objetivo de hidratación ideal. ¿Lo configuramos?',
+          actions: [
+            { label: 'Calcular mi objetivo', action: 'calculate_hydration_goal' },
+            { label: 'Configurar manualmente', action: 'set_manual_goal' },
+            { label: 'Más tarde', action: 'remind_later' },
+          ],
+          type: 'hydration_plan_missing',
+          priority: 'medium',
+          metadata: { 
+            hasProfile: !!profile,
+            hasLogs: recentHydrationLogs > 0,
+          },
+        };
+
+        await this.notificationsService.createNotification(user.id, notification);
+      }
+    }
+  }
+
   // Método para trigger manual de notificaciones específicas
   async triggerNotification(userId: string, type: string, data?: any) {
     switch (type) {
@@ -421,6 +482,9 @@ export class NotificationTriggersService {
         break;
       case 'emotional_patterns':
         await this.checkEmotionalPatterns(userId);
+        break;
+      case 'hydration_plan_setup':
+        await this.checkMissingHydrationPlan();
         break;
       default:
         console.log(`Tipo de notificación no reconocido: ${type}`);
