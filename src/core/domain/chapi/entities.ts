@@ -1,7 +1,6 @@
-export class EmotionalLog {
-  id?: string;
+export interface EmotionalLog {
+  id: string;
   userId: string;
-  date: Date;
   message: string;
   emotion: string;
   advice: string;
@@ -20,4 +19,33 @@ export interface ChapiResponse {
   neuroscience: string;
   actions: ChapiAction[];
   miniTask?: string;
+}
+
+// Nuevas interfaces para el sistema contextual
+export interface ChapiContextualResponse {
+  type: 'GREETING' | 'EMOTIONAL_ANALYSIS' | 'FOLLOW_UP' | 'CASUAL_CHAT' | 'MOTIVATION';
+  message: string;
+  emotionalAnalysis?: ChapiResponse;
+  suggestions?: string[];
+  followUpQuestions?: string[];
+}
+
+export interface ConversationContext {
+  userId: string;
+  lastInteractionType: string;
+  lastEmotion?: string;
+  conversationHistory: Array<{
+    message: string;
+    timestamp: Date;
+    type: string;
+  }>;
+  currentMood?: string;
+  sessionStarted: Date;
+}
+
+export interface MessageClassification {
+  type: 'GREETING' | 'EMOTIONAL_EXPRESSION' | 'FOLLOW_UP' | 'CASUAL' | 'MOTIVATION_REQUEST';
+  confidence: number;
+  emotionalIntensity: 'LOW' | 'MEDIUM' | 'HIGH';
+  requiresAnalysis: boolean;
 }

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from 'src/infrastructure/database/prisma.module';
 import { GamificationModule } from './gamification.module';
+import { NotificationsModule } from './notifications.module';
 import { UpsertCheckinUseCase } from '../core/application/checkins/use-cases/upsert-checkin.usecase';
 import { ListCheckinsUseCase } from '../core/application/checkins/use-cases/list-checkins.usecase';
 import { GetTodayCheckinUseCase } from '../core/application/checkins/use-cases/get-today-checkin.usecase';
@@ -9,7 +10,7 @@ import { CheckinPrismaRepository } from '../infrastructure/persistence/prisma/ch
 import { CheckinsController } from '../infrastructure/http/checkins.controller';
 
 @Module({
-  imports: [PrismaModule, GamificationModule],
+  imports: [PrismaModule, GamificationModule, NotificationsModule],
   controllers: [CheckinsController],
   providers: [
     UpsertCheckinUseCase,

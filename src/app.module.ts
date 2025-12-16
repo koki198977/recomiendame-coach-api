@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { PlansModule } from './modules/plans.module';
 
 import { AppController } from './app.controller';
@@ -17,19 +18,23 @@ import { GamificationModule } from './modules/gamification.module';
 import { TaxonomiesAdminModule } from './modules/taxonomies-admin.module';
 import { WorkoutsModule } from './modules/workouts.module';
 import { ChapiModule } from './modules/chapi.module';
+import { HydrationModule } from './modules/hydration.module';
 import { MediaModule } from './modules/media.module';
 import { MealsModule } from './modules/meals.module';
 import { ContactModule } from './modules/contact.module';
+import { NotificationsModule } from './modules/notifications.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     UsersModule,
     AuthModule,
     PlansModule,
     WorkoutsModule,
     ChapiModule,
+    HydrationModule,
     CheckinsModule,
     MeModule,
     MeFeedModule,
@@ -41,6 +46,7 @@ import { ContactModule } from './modules/contact.module';
     MediaModule,
     MealsModule,
     ContactModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

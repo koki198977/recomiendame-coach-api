@@ -141,6 +141,10 @@ model User {
 
   // Chapi Mind
   emotionalLogs EmotionalLog[]
+  chapiContext  Json? // Contexto conversacional de Chapi
+
+  // Hydration Goal
+  hydrationGoal Json? // Objetivo de hidratación del usuario
 
   // Meal Logging
   mealLogs MealLog[]

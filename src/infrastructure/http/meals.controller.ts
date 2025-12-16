@@ -17,6 +17,8 @@ import { LogMealUseCase } from '../../core/application/meals/use-cases/log-meal.
 import { GetMealsTodayUseCase } from '../../core/application/meals/use-cases/get-meals-today.usecase';
 import { MarkMealConsumedUseCase } from '../../core/application/meals/use-cases/mark-meal-consumed.usecase';
 import { AnalyzeMealImageUseCase } from '../../core/application/meals/use-cases/analyze-meal-image.usecase';
+import { NotificationTriggersService } from '../../modules/notification-triggers.service';
+import { HealthAwareNotificationsService } from '../../modules/health-aware-notifications.service';
 
 @Controller('meals')
 @UseGuards(JwtAuthGuard)
@@ -26,6 +28,8 @@ export class MealsController {
     private readonly getMealsToday: GetMealsTodayUseCase,
     private readonly markMealConsumed: MarkMealConsumedUseCase,
     private readonly analyzeMealImage: AnalyzeMealImageUseCase,
+    private readonly notificationTriggers: NotificationTriggersService,
+    private readonly healthAwareNotifications: HealthAwareNotificationsService,
   ) {}
 
   @Post('log')
@@ -34,7 +38,25 @@ export class MealsController {
     @Request() req: any,
   ) {
     const userId = req.user.userId ?? req.user.sub;
-    return this.logMeal.execute(userId, dto);
+    
+    // 1. Registrar la comida
+    const result = await this.logMeal.execute(userId, dto);
+    
+    // 2. 🔔 TRIGGERS INMEDIATOS DE NOTIFICACIONES
+    try {
+      // Verificar balance nutricional
+      await this.notificationTriggers.checkNutritionalBalance(userId);
+      
+      // Verificar condiciones de salud (diabetes, alergias, etc.)
+      await this.healthAwareNotifications.checkHealthConditionCompliance(userId);
+      
+      console.log(`✅ Notificaciones procesadas para usuario ${userId}`);
+    } catch (error) {
+      console.error('❌ Error procesando notificaciones:', error);
+      // No fallar el endpoint principal por errores de notificaciones
+    }
+    
+    return result;
   }
 
   @Get('today')
