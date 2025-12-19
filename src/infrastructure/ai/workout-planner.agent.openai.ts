@@ -44,6 +44,7 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
     userProfile,
     goal,
     daysAvailable,
+    environment,
     equipmentImageUrls,
   }: {
     userId: string;
@@ -51,6 +52,7 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
     userProfile: any;
     goal: string;
     daysAvailable: number;
+    environment?: string;
     equipmentImageUrls?: string[];
   }): Promise<{ days: WorkoutDay[]; notes?: string }> {
     try {
@@ -66,16 +68,45 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
         equipmentContext = `
       **EQUIPAMIENTO DISPONIBLE:**
       El usuario ha proporcionado ${equipmentImageUrls.length} imagen(es) de su equipamiento disponible.
+      CONTEXTO DE ENTRENAMIENTO: ${environment || 'No especificado (Asumir entorno adecuado a las fotos)'}.
       ⚠️ IMPORTANTE: Analiza las imágenes y genera ejercicios EXCLUSIVAMENTE con el equipamiento visible en las fotos.
       NO incluyas ejercicios que requieran equipamiento que no aparezca en las imágenes.
       Si ves mancuernas, usa ejercicios con mancuernas. Si ves máquinas específicas, úsalas.
       Sé creativo con el equipamiento disponible para cumplir el objetivo del usuario.
       `;
       } else {
-        equipmentContext = `
-      **EQUIPAMIENTO:**
-      El usuario no ha especificado equipamiento. Asume un gimnasio completo con barras, mancuernas, máquinas, etc.
+        const env = (environment || 'GYM').toUpperCase();
+        if (env === 'HOME') {
+           equipmentContext = `
+      **ENTORNO: HOME (CASA)**
+      El usuario entrena en CASA y NO ha subido fotos de equipamiento.
+      Asume entrenamiento con **PESO CORPORAL** (Calistenia básica) y objetos comunes (ej: silla, pared, mochila).
+      NO asumas que tiene mancuernas ni barras a menos que se especifique en otro lado.
+      Prioriza ejercicios que se puedan hacer en un espacio reducido.
       `;
+        } else if (env === 'OUTDOOR') {
+           equipmentContext = `
+      **ENTORNO: OUTDOOR (AL AIRE LIBRE)**
+      El usuario entrena AL AIRE LIBRE (parque, playa, calle).
+      Asume entrenamiento con **PESO CORPORAL** y elementos del entorno (bancos, escalones, barras de parque).
+      Incluye ejercicios de calistenia, running, sprints, y uso creativo del mobiliario urbano.
+      Prioriza ejercicios funcionales que aprovechen el espacio abierto.
+      `;
+        } else if (env === 'SPORT') {
+           equipmentContext = `
+      **ENTORNO: SPORT (DEPORTIVO ESPECÍFICO)**
+      El usuario entrena para un DEPORTE ESPECÍFICO.
+      Enfócate en ejercicios funcionales, pliométricos, y movimientos específicos del deporte.
+      Incluye trabajo de agilidad, coordinación, potencia y resistencia deportiva.
+      Usa equipamiento deportivo básico (conos, escalera de agilidad, balones medicinales).
+      `;
+        } else {
+           equipmentContext = `
+      **ENTORNO: GYM (GIMNASIO)**
+      El usuario entrena en un GIMNASIO comercial estándar.
+      Asume acceso a: Barras, Discos, Mancuernas, Rack de Sentadilla, Poleas, Máquinas de cables, etc.
+      `;
+        }
       }
 
       const userPrompt = `

@@ -17,6 +17,7 @@ export interface GenerateWeeklyWorkoutPlanInput {
   isoWeek: string; // "2023-W40"
   daysAvailable: number;
   goal: string; // "HYPERTROPHY", "STRENGTH", "ENDURANCE", etc.
+  environment?: string; // "HOME", "GYM"
   equipmentImageUrls?: string[]; // URLs de imágenes del equipamiento (opcional)
 }
 
@@ -54,6 +55,7 @@ export class GenerateWeeklyWorkoutPlanUseCase {
       userProfile: profile,
       goal: input.goal,
       daysAvailable: input.daysAvailable,
+      environment: input.environment,
       equipmentImageUrls: input.equipmentImageUrls,
     });
 

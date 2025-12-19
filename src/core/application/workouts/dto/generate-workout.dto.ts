@@ -12,6 +12,10 @@ export class GenerateWorkoutDto {
   goal: string;
 
   @IsOptional()
+  @IsString()
+  environment?: string;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   equipmentImageUrls?: string[];

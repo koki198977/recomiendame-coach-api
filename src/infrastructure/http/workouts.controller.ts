@@ -33,6 +33,7 @@ export class WorkoutsController {
       isoWeek: body.isoWeek,
       daysAvailable: body.daysAvailable ?? 4,
       goal: body.goal ?? 'GENERAL',
+      environment: body.environment,
       equipmentImageUrls: body.equipmentImageUrls,
     });
 
