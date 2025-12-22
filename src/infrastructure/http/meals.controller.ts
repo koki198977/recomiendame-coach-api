@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -17,6 +18,7 @@ import { LogMealUseCase } from '../../core/application/meals/use-cases/log-meal.
 import { GetMealsTodayUseCase } from '../../core/application/meals/use-cases/get-meals-today.usecase';
 import { MarkMealConsumedUseCase } from '../../core/application/meals/use-cases/mark-meal-consumed.usecase';
 import { AnalyzeMealImageUseCase } from '../../core/application/meals/use-cases/analyze-meal-image.usecase';
+import { DeleteMealLogUseCase } from '../../core/application/meals/use-cases/delete-meal-log.usecase';
 import { NotificationTriggersService } from '../../modules/notification-triggers.service';
 import { HealthAwareNotificationsService } from '../../modules/health-aware-notifications.service';
 
@@ -28,6 +30,7 @@ export class MealsController {
     private readonly getMealsToday: GetMealsTodayUseCase,
     private readonly markMealConsumed: MarkMealConsumedUseCase,
     private readonly analyzeMealImage: AnalyzeMealImageUseCase,
+    private readonly deleteMealLog: DeleteMealLogUseCase,
     private readonly notificationTriggers: NotificationTriggersService,
     private readonly healthAwareNotifications: HealthAwareNotificationsService,
   ) {}
@@ -80,5 +83,14 @@ export class MealsController {
     @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: AnalyzeMealDto,
   ) {
     return this.analyzeMealImage.execute(dto.imageUrl, dto.description);
+  }
+
+  @Delete(':id')
+  async delete(
+    @Param('id') mealLogId: string,
+    @Request() req: any,
+  ) {
+    const userId = req.user.userId ?? req.user.sub;
+    return this.deleteMealLog.execute(userId, mealLogId);
   }
 }

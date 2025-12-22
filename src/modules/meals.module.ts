@@ -4,6 +4,7 @@ import { LogMealUseCase } from '../core/application/meals/use-cases/log-meal.use
 import { GetMealsTodayUseCase } from '../core/application/meals/use-cases/get-meals-today.usecase';
 import { MarkMealConsumedUseCase } from '../core/application/meals/use-cases/mark-meal-consumed.usecase';
 import { AnalyzeMealImageUseCase } from '../core/application/meals/use-cases/analyze-meal-image.usecase';
+import { DeleteMealLogUseCase } from '../core/application/meals/use-cases/delete-meal-log.usecase';
 import { PrismaModule } from '../infrastructure/database/prisma.module';
 import { NotificationsModule } from './notifications.module';
 
@@ -15,6 +16,7 @@ import { NotificationsModule } from './notifications.module';
     GetMealsTodayUseCase,
     MarkMealConsumedUseCase,
     AnalyzeMealImageUseCase,
+    DeleteMealLogUseCase,
   ],
 })
 export class MealsModule {}
