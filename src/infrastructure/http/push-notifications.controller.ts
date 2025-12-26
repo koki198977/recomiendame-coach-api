@@ -42,7 +42,15 @@ export class PushNotificationsController {
     @Request() req: any,
     @Body() dto: RegisterPushTokenDto,
   ) {
-    const userId = req.user.id;
+    // Debug logging
+    this.logger.debug(`Request user object: ${JSON.stringify(req.user)}`);
+    
+    const userId = req.user.userId;
+    
+    if (!userId) {
+      this.logger.error('UserId is undefined from JWT payload');
+      throw new Error('Usuario no autenticado correctamente');
+    }
     
     this.logger.log(`Registrando push token para usuario ${userId}: ${dto.platform}`);
     
@@ -64,7 +72,7 @@ export class PushNotificationsController {
     @Request() req: any,
     @Body() dto: UnregisterPushTokenDto,
   ) {
-    const userId = req.user.id;
+    const userId = req.user.userId; // Cambiar de id a userId
     
     this.logger.log(`Eliminando push token para usuario ${userId}`);
     
