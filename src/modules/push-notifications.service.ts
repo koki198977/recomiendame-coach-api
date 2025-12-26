@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../infrastructure/database/prisma.service';
-import * as admin from 'firebase-admin';
 import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
+import { PrismaClient } from '@prisma/client';
 
 export interface PushNotificationPayload {
   title: string;
@@ -15,75 +15,41 @@ export interface PushNotificationPayload {
 export class PushNotificationsService {
   private readonly logger = new Logger(PushNotificationsService.name);
   private expo: Expo;
-  private firebaseInitialized = false;
 
   constructor(private prisma: PrismaService) {
-    this.initializeServices();
+    this.initializeExpo();
   }
 
-  private initializeServices() {
+  private initializeExpo() {
     // Inicializar Expo SDK
     this.expo = new Expo({
       accessToken: process.env.EXPO_ACCESS_TOKEN,
-      useFcmV1: true, // Usar FCM v1 API
+      useFcmV1: true,
     });
-
-    // Inicializar Firebase Admin SDK
-    this.initializeFirebase();
-  }
-
-  private initializeFirebase() {
-    try {
-      if (!admin.apps.length && process.env.FIREBASE_PROJECT_ID) {
-        const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-        
-        admin.initializeApp({
-          credential: admin.credential.cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            privateKey,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          }),
-        });
-        
-        this.firebaseInitialized = true;
-        this.logger.log('✅ Firebase Admin SDK inicializado');
-      }
-    } catch (error) {
-      this.logger.error('❌ Error inicializando Firebase:', error);
-    }
+    
+    this.logger.log('✅ Expo Push SDK inicializado');
   }
 
   async sendToUser(userId: string, payload: PushNotificationPayload): Promise<void> {
     try {
       // Obtener todos los tokens del usuario
-      const deviceTokens = await this.prisma.deviceToken.findMany({
+      const userTokens = await (this.prisma as any).userPushToken.findMany({
         where: { userId },
       });
 
-      if (deviceTokens.length === 0) {
-        this.logger.warn(`No hay tokens de dispositivo para usuario ${userId}`);
+      if (userTokens.length === 0) {
+        this.logger.warn(`No hay push tokens para usuario ${userId}`);
         return;
       }
 
-      // Separar tokens por plataforma
-      const expoTokens = deviceTokens.filter(d => d.platform === 'expo').map(d => d.token);
-      const fcmTokens = deviceTokens.filter(d => d.platform === 'fcm').map(d => d.token);
-      const apnsTokens = deviceTokens.filter(d => d.platform === 'apns').map(d => d.token);
+      const pushTokens = userTokens.map((token: any) => token.pushToken);
+      await this.sendExpoNotifications(pushTokens, payload);
 
-      // Enviar a Expo (React Native con Expo)
-      if (expoTokens.length > 0) {
-        await this.sendExpoNotifications(expoTokens, payload);
-      }
-
-      // Enviar a FCM (Android nativo)
-      if (fcmTokens.length > 0 && this.firebaseInitialized) {
-        await this.sendFCMNotifications(fcmTokens, payload);
-      }
-
-      // Enviar a APNs (iOS nativo)
-      if (apnsTokens.length > 0 && this.firebaseInitialized) {
-        await this.sendAPNSNotifications(apnsTokens, payload);
-      }
+      // Actualizar lastUsedAt para todos los tokens
+      await (this.prisma as any).userPushToken.updateMany({
+        where: { userId },
+        data: { lastUsedAt: new Date() },
+      });
 
       this.logger.log(`📱 Notificación enviada a usuario ${userId}: ${payload.title}`);
     } catch (error) {
@@ -109,7 +75,7 @@ export class PushNotificationsService {
           body: payload.body,
           data: payload.data || {},
           badge: payload.badge,
-          channelId: 'default', // Para Android
+          channelId: 'default',
           priority: 'high',
           ttl: 3600, // 1 hora
         });
@@ -139,74 +105,7 @@ export class PushNotificationsService {
     }
   }
 
-  private async sendFCMNotifications(tokens: string[], payload: PushNotificationPayload): Promise<void> {
-    try {
-      const message = {
-        notification: {
-          title: payload.title,
-          body: payload.body,
-        },
-        data: payload.data ? this.stringifyData(payload.data) : {},
-        android: {
-          priority: 'high' as const,
-          notification: {
-            channelId: 'default',
-            sound: payload.sound || 'default',
-            priority: 'high' as const,
-          },
-        },
-        tokens,
-      };
-
-      const response = await admin.messaging().sendEachForMulticast(message);
-      
-      this.logger.log(`✅ FCM: ${response.successCount}/${tokens.length} enviadas`);
-      
-      if (response.failureCount > 0) {
-        response.responses.forEach((resp, idx) => {
-          if (!resp.success) {
-            this.logger.error(`FCM error para token ${tokens[idx]}: ${resp.error?.message}`);
-          }
-        });
-      }
-    } catch (error) {
-      this.logger.error('❌ Error en sendFCMNotifications:', error);
-    }
-  }
-
-  private async sendAPNSNotifications(tokens: string[], payload: PushNotificationPayload): Promise<void> {
-    try {
-      const message = {
-        notification: {
-          title: payload.title,
-          body: payload.body,
-        },
-        data: payload.data ? this.stringifyData(payload.data) : {},
-        apns: {
-          payload: {
-            aps: {
-              alert: {
-                title: payload.title,
-                body: payload.body,
-              },
-              sound: payload.sound || 'default',
-              badge: payload.badge || 0,
-            },
-          },
-        },
-        tokens,
-      };
-
-      const response = await admin.messaging().sendEachForMulticast(message);
-      
-      this.logger.log(`✅ APNs: ${response.successCount}/${tokens.length} enviadas`);
-    } catch (error) {
-      this.logger.error('❌ Error en sendAPNSNotifications:', error);
-    }
-  }
-
   private async processExpoReceipts(tickets: ExpoPushTicket[]): Promise<void> {
-    // Procesar receipts para tracking de entrega (opcional)
     const receiptIds = tickets
       .filter(ticket => ticket.status === 'ok')
       .map(ticket => ticket.id);
@@ -223,6 +122,12 @@ export class PushNotificationsService {
           const receipt = receipts[receiptId];
           if (receipt.status === 'error') {
             this.logger.error(`Expo receipt error: ${receipt.message}`);
+            
+            // Si el token es inválido, eliminarlo de la base de datos
+            if (receipt.details?.error === 'DeviceNotRegistered') {
+              // Aquí podrías implementar lógica para limpiar tokens inválidos
+              this.logger.warn('Token inválido detectado, debería ser eliminado');
+            }
           }
         }
       }
@@ -231,62 +136,107 @@ export class PushNotificationsService {
     }
   }
 
-  private stringifyData(data: any): Record<string, string> {
-    const result: Record<string, string> = {};
-    for (const [key, value] of Object.entries(data)) {
-      result[key] = typeof value === 'string' ? value : JSON.stringify(value);
-    }
-    return result;
-  }
-
-  // Método para registrar token de dispositivo
+  // Método para registrar token de dispositivo (compatibilidad con controlador existente)
   async registerDeviceToken(
     userId: string,
     token: string,
-    platform: 'expo' | 'fcm' | 'apns'
+    platform: 'ios' | 'android' | 'expo' | 'fcm' | 'apns'
+  ): Promise<void> {
+    // Mapear plataformas para compatibilidad
+    const mappedPlatform = platform === 'expo' || platform === 'fcm' || platform === 'apns' 
+      ? (platform === 'fcm' ? 'android' : 'ios')
+      : platform;
+    
+    return this.registerPushToken(userId, token, mappedPlatform);
+  }
+
+  // Método para eliminar token (compatibilidad con controlador existente)
+  async unregisterDeviceToken(token: string): Promise<void> {
+    return this.unregisterPushToken(token);
+  }
+
+  // Método para registrar token de dispositivo
+  async registerPushToken(
+    userId: string,
+    pushToken: string,
+    platform: 'ios' | 'android'
   ): Promise<void> {
     try {
-      await this.prisma.deviceToken.upsert({
+      // Verificar que el token sea válido
+      if (!Expo.isExpoPushToken(pushToken)) {
+        throw new Error('Token de Expo inválido');
+      }
+
+      await (this.prisma as any).userPushToken.upsert({
         where: {
-          token,
+          pushToken,
         },
         update: {
           userId,
           platform,
+          lastUsedAt: new Date(),
         },
         create: {
           userId,
-          token,
+          pushToken,
           platform,
         },
       });
 
-      this.logger.log(`✅ Token registrado para usuario ${userId} (${platform})`);
+      this.logger.log(`✅ Push token registrado para usuario ${userId} (${platform})`);
     } catch (error) {
-      this.logger.error('❌ Error registrando token:', error);
+      this.logger.error('❌ Error registrando push token:', error);
+      throw error;
     }
   }
 
   // Método para eliminar token (cuando usuario hace logout)
-  async unregisterDeviceToken(token: string): Promise<void> {
+  async unregisterPushToken(pushToken: string, userId?: string): Promise<void> {
     try {
-      await this.prisma.deviceToken.delete({
-        where: { token },
+      const whereClause: any = { pushToken };
+      if (userId) {
+        whereClause.userId = userId;
+      }
+
+      await (this.prisma as any).userPushToken.delete({
+        where: whereClause,
       });
       
-      this.logger.log(`✅ Token eliminado: ${token}`);
+      this.logger.log(`✅ Push token eliminado: ${pushToken}`);
     } catch (error) {
-      this.logger.error('❌ Error eliminando token:', error);
+      this.logger.error('❌ Error eliminando push token:', error);
+      throw error;
     }
   }
 
   // Método para limpiar tokens inválidos
   async cleanupInvalidTokens(): Promise<void> {
     try {
-      // Aquí podrías implementar lógica para limpiar tokens que fallan consistentemente
-      this.logger.log('🧹 Limpieza de tokens completada');
+      // Eliminar tokens que no se han usado en más de 30 días
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const result = await (this.prisma as any).userPushToken.deleteMany({
+        where: {
+          lastUsedAt: {
+            lt: thirtyDaysAgo,
+          },
+        },
+      });
+
+      this.logger.log(`🧹 Limpieza completada: ${result.count} tokens eliminados`);
     } catch (error) {
       this.logger.error('❌ Error en limpieza de tokens:', error);
     }
+  }
+
+  // Método para enviar notificación de prueba
+  async sendTestNotification(userId: string): Promise<void> {
+    await this.sendToUser(userId, {
+      title: '🍽️ Hora de comer',
+      body: 'No olvides registrar tu almuerzo',
+      data: { screen: 'nutrition' },
+      sound: 'default',
+    });
   }
 }

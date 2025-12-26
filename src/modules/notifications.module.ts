@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
+import { PushNotificationsController } from '../infrastructure/http/push-notifications.controller';
 import { NotificationTriggersService } from './notification-triggers.service';
 import { SmartAnalyticsService } from './smart-analytics.service';
 import { HealthAwareNotificationsService } from './health-aware-notifications.service';
@@ -10,7 +11,7 @@ import { PrismaModule } from '../infrastructure/database/prisma.module';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [NotificationsController],
+  controllers: [NotificationsController, PushNotificationsController],
   providers: [
     NotificationsService,
     NotificationTriggersService,

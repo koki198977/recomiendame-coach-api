@@ -104,7 +104,7 @@ model User {
   points        PointsLedger[]
   streak        Streak?
   notifications Notification[]
-  devices       DeviceToken[]
+  pushTokens    UserPushToken[]
 
   // Retos (Challenges)
   ownedChallenges      Challenge[]           @relation("ChallengeOwner")
@@ -247,13 +247,16 @@ model Notification {
   createdAt DateTime @default(now())
 }
 
-model DeviceToken {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  platform  String
-  createdAt DateTime @default(now())
+model UserPushToken {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushToken  String   @unique
+  platform   String   // "ios" | "android"
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /**
