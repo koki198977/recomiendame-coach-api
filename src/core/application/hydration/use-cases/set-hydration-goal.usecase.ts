@@ -45,8 +45,8 @@ export class SetHydrationGoalUseCase {
       }
 
       // Validaciones
-      if (!dailyTargetMl || dailyTargetMl < 1000 || dailyTargetMl > 5000) {
-        return err(new Error('El objetivo debe estar entre 1000ml y 5000ml'));
+      if (!dailyTargetMl || dailyTargetMl < 1000 || dailyTargetMl > 8000) {
+        return err(new Error('El objetivo debe estar entre 1000ml y 8000ml'));
       }
 
       // Crear objetivo con valores por defecto
