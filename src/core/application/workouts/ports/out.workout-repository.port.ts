@@ -30,5 +30,11 @@ export interface WorkoutRepositoryPort {
     minutes: number;
     kcal: number;
   }): Promise<void>;
+  upsertActivity(params: {
+    userId: string;
+    date: Date;
+    minutes: number;
+    kcal: number;
+  }): Promise<void>;
   getActivityStats(userId: string, startDate: Date, endDate: Date): Promise<any[]>;
 }

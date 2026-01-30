@@ -203,6 +203,53 @@ export class WorkoutPrismaRepository implements WorkoutRepositoryPort {
     }
   }
 
+  async upsertActivity(params: {
+    userId: string;
+    date: Date;
+    minutes: number;
+    kcal: number;
+  }): Promise<void> {
+    // Normalizar la fecha para buscar por día completo
+    const dateStart = new Date(params.date);
+    dateStart.setHours(0, 0, 0, 0);
+    
+    const dateEnd = new Date(params.date);
+    dateEnd.setHours(23, 59, 59, 999);
+
+    // Buscar si ya existe un log para ese día
+    const existing = await this.prisma.activityLog.findFirst({
+      where: {
+        userId: params.userId,
+        date: {
+          gte: dateStart,
+          lt: dateEnd,
+        },
+      },
+    });
+
+    if (existing) {
+      // Reemplazar los valores existentes (no sumar)
+      await this.prisma.activityLog.update({
+        where: { id: existing.id },
+        data: {
+          minutes: params.minutes,
+          kcal: params.kcal,
+          date: params.date, // Actualizar también la fecha exacta
+        },
+      });
+    } else {
+      // Crear nuevo registro
+      await this.prisma.activityLog.create({
+        data: {
+          userId: params.userId,
+          date: params.date,
+          minutes: params.minutes,
+          kcal: params.kcal,
+        },
+      });
+    }
+  }
+
   async getActivityStats(userId: string, startDate: Date, endDate: Date): Promise<any[]> {
     return await this.prisma.activityLog.findMany({
       where: {
