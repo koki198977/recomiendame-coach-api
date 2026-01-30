@@ -18,6 +18,7 @@ import { GamificationModule } from './modules/gamification.module';
 import { TaxonomiesAdminModule } from './modules/taxonomies-admin.module';
 import { WorkoutsModule } from './modules/workouts.module';
 import { ChapiModule } from './modules/chapi.module';
+import { ChapiV2Module } from './modules/chapi-v2.module';
 import { HydrationModule } from './modules/hydration.module';
 import { MediaModule } from './modules/media.module';
 import { MealsModule } from './modules/meals.module';
@@ -34,6 +35,7 @@ import { NotificationsModule } from './modules/notifications.module';
     PlansModule,
     WorkoutsModule,
     ChapiModule,
+    ChapiV2Module,
     HydrationModule,
     CheckinsModule,
     MeModule,

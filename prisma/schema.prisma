@@ -76,18 +76,17 @@ enum Intensity {
   HIGH
 }
 
-
 /**
  * ===== Modelos base de usuarios/social =====
  */
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  emailVerified Boolean  @default(false)
-  role      UserRole @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String                   @id @default(cuid())
+  email              String                   @unique
+  password           String
+  emailVerified      Boolean                  @default(false)
+  role               UserRole                 @default(USER)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
   emailVerifications EmailVerificationToken[]
 
   // Perfil (1:1)
@@ -132,7 +131,7 @@ model User {
 
   // Reset de contraseña
   passwordResets PasswordReset[]
-  
+
   // Eliminación de cuenta
   accountDeletions AccountDeletion[]
 
@@ -141,7 +140,11 @@ model User {
 
   // Chapi Mind
   emotionalLogs EmotionalLog[]
-  chapiContext  Json? // Contexto conversacional de Chapi
+  chapiContext  Json? // Contexto conversacional de Chapi (v1)
+
+  // Chapi 2.0 - Asistente Inteligente
+  chapiV2Context Json? // Contexto conversacional completo de Chapi 2.0
+  conversationMessages ConversationMessage[]
 
   // Hydration Goal
   hydrationGoal Json? // Objetivo de hidratación del usuario
@@ -150,15 +153,14 @@ model User {
   mealLogs MealLog[]
 }
 
-
 model EmailVerificationToken {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash  String   @unique
-  requestedAt DateTime @default(now())
-  expiresAt  DateTime
-  usedAt     DateTime?
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  requestedAt DateTime  @default(now())
+  expiresAt   DateTime
+  usedAt      DateTime?
 
   @@index([userId, expiresAt])
 }
@@ -252,7 +254,7 @@ model UserPushToken {
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   pushToken  String   @unique
-  platform   String   // "ios" | "android"
+  platform   String // "ios" | "android"
   createdAt  DateTime @default(now())
   lastUsedAt DateTime @default(now())
 
@@ -263,24 +265,24 @@ model UserPushToken {
  * ===== Perfil, condiciones, preferencias =====
  */
 model UserProfile {
-  userId                String           @id
-  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sex                   Sex?
-  birthDate             DateTime?
-  heightCm              Int?
-  weightKg              Decimal?         @db.Decimal(5, 2)
-  activityLevel         ActivityLevel?
-  country               String?
-  budgetLevel           Int?
-  cookTimePerMeal       Int?
-  
+  userId          String         @id
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sex             Sex?
+  birthDate       DateTime?
+  heightCm        Int?
+  weightKg        Decimal?       @db.Decimal(5, 2)
+  activityLevel   ActivityLevel?
+  country         String?
+  budgetLevel     Int?
+  cookTimePerMeal Int?
+
   // Nuevos campos para personalización de planes
-  nutritionGoal         NutritionGoal?
-  targetWeightKg        Decimal?         @db.Decimal(5, 2)
-  timeFrame             TimeFrame?
-  intensity             Intensity?
-  currentMotivation     String?
-  
+  nutritionGoal     NutritionGoal?
+  targetWeightKg    Decimal?       @db.Decimal(5, 2)
+  timeFrame         TimeFrame?
+  intensity         Intensity?
+  currentMotivation String?
+
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   PrivacySettings       PrivacySettings? @relation(fields: [privacySettingsUserId], references: [userId])
@@ -406,7 +408,7 @@ model Meal {
   fat_g       Int
   tags        String[]
   ingredients MealIngredient[]
-  logs        MealLog[]        // Registros de consumo de esta comida
+  logs        MealLog[] // Registros de consumo de esta comida
 
   @@unique([planDayId, slot])
 }
@@ -639,10 +641,10 @@ model EmotionalLog {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      DateTime @default(now())
-  message   String   // User's input
-  emotion   String   // Classified emotion (e.g., "SADNESS", "ANXIETY")
-  advice    String   // AI's explanation/neuroscience
-  actions   Json     // List of suggested actions
+  message   String // User's input
+  emotion   String // Classified emotion (e.g., "SADNESS", "ANXIETY")
+  advice    String // AI's explanation/neuroscience
+  actions   Json // List of suggested actions
   createdAt DateTime @default(now())
 
   @@index([userId, date])
@@ -652,22 +654,39 @@ model EmotionalLog {
  * ===== Meal Logging (Registro de comidas consumidas) =====
  */
 model MealLog {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mealId      String?  // Referencia a comida del plan (opcional)
-  meal        Meal?    @relation(fields: [mealId], references: [id], onDelete: SetNull)
-  date        DateTime @default(now())
-  slot        MealSlot
-  title       String
-  kcal        Int
-  protein_g   Int
-  carbs_g     Int
-  fat_g       Int
-  notes       String?
-  imageUrl    String?  // Foto de la comida (opcional)
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealId    String? // Referencia a comida del plan (opcional)
+  meal      Meal?    @relation(fields: [mealId], references: [id], onDelete: SetNull)
+  date      DateTime @default(now())
+  slot      MealSlot
+  title     String
+  kcal      Int
+  protein_g Int
+  carbs_g   Int
+  fat_g     Int
+  notes     String?
+  imageUrl  String? // Foto de la comida (opcional)
+  createdAt DateTime @default(now())
 
   @@index([userId, date])
   @@index([mealId])
+}
+
+/**
+ * ===== Chapi 2.0 - Asistente Inteligente =====
+ */
+model ConversationMessage {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String   // 'user' | 'assistant'
+  content     String
+  timestamp   DateTime @default(now())
+  messageType String   // 'text' | 'action' | 'recommendation' | 'analysis'
+  metadata    Json?    // Información adicional (emociones, acciones, insights, etc.)
+
+  @@index([userId, timestamp])
+  @@index([userId, messageType])
 }
