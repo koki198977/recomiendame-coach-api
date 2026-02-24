@@ -10,6 +10,8 @@ type TimeFrame = 'ONE_MONTH' | 'THREE_MONTHS' | 'SIX_MONTHS' | 'ONE_YEAR' | 'LON
 type Intensity = 'LOW' | 'MODERATE' | 'HIGH';
 
 type UpdatePatch = {
+  name?: string | null;
+  lastName?: string | null;
   sex?: string;                 // "MALE" | "FEMALE" | "OTHER" | "UNSPECIFIED"
   birthDate?: string;
   heightCm?: number | null;
@@ -110,7 +112,8 @@ export class ProfilePrismaRepository implements ProfileRepoPort {
    * leyendo el perfil de UserProfile y las listas desde tablas pivot por userId.
    */
   async get(userId: string) {
-    const [p, ua, uc, up] = await Promise.all([
+    const [user, p, ua, uc, up] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: userId }, select: { name: true, lastName: true } }),
       this.prisma.userProfile.findUnique({ where: { userId } }),
       this.prisma.userAllergy.findMany({ where: { userId }, include: { allergy: true } }),
       this.prisma.userCondition.findMany({ where: { userId }, include: { condition: true } }),
@@ -119,6 +122,8 @@ export class ProfilePrismaRepository implements ProfileRepoPort {
 
     return {
       userId,
+      name: user?.name ?? null,
+      lastName: user?.lastName ?? null,
       sex: p?.sex ?? null,
       birthDate: p?.birthDate ?? null,
       heightCm: p?.heightCm ?? null,
@@ -150,6 +155,18 @@ export class ProfilePrismaRepository implements ProfileRepoPort {
     const timeEnum = toTimeFrameEnum(patch.timeFrame);
     const intEnum = toIntensityEnum(patch.intensity);
 
+    // Actualizar campos en la tabla User (name, lastName)
+    if (patch.name !== undefined || patch.lastName !== undefined) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...(patch.name !== undefined && { name: patch.name }),
+          ...(patch.lastName !== undefined && { lastName: patch.lastName }),
+        },
+      });
+    }
+
+    // Actualizar UserProfile
     await this.prisma.userProfile.upsert({
       where: { userId },
       update: {

@@ -23,6 +23,10 @@ export enum IntensityDto {
 }
 
 export class UpdateProfileDto {
+  // Información personal
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsString() lastName?: string;
+
   // Campos básicos existentes
   @IsOptional() @IsEnum(SexDto) sex?: SexDto;
   @IsOptional() @IsDateString() birthDate?: string;           // YYYY-MM-DD
