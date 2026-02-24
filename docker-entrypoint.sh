@@ -11,16 +11,27 @@ done
 
 
 echo "✅ Base de datos disponible. Ejecutando Prisma..."
+
+# Actualizar collation version si es necesario
+echo "🔧 Verificando collation version..."
+PGPASSWORD=nest psql -h db -U nest -d coach -c "ALTER DATABASE coach REFRESH COLLATION VERSION;" 2>/dev/null || echo "⚠️  No se pudo actualizar collation (puede ser normal)"
+
 # Genera client
 npx prisma generate
 
 # Intentar aplicar migraciones, si falla hacer baseline
 echo "🚀 Aplicando migraciones..."
+
+# Primero, resolver cualquier migración fallida marcándola como aplicada
+echo "� Resolviendo migraciones fallidas..."
+npx prisma migrate resolve --applied "20251216000001_add_hydration_goal" 2>/dev/null || true
+npx prisma migrate resolve --applied "20251226115803_add_user_push_token_model" 2>/dev/null || true
+
 if ! npx prisma migrate deploy 2>&1; then
-  echo "⚠️  Error al aplicar migraciones. Haciendo baseline..."
+  echo "⚠️  Error al aplicar migraciones. Haciendo baseline completo..."
   
-  # Marcar todas las migraciones antiguas como aplicadas (baseline)
-  echo "📝 Marcando migraciones existentes como aplicadas..."
+  # Marcar todas las migraciones como aplicadas (baseline)
+  echo "📝 Marcando todas las migraciones como aplicadas..."
   npx prisma migrate resolve --applied "20251009190655_init" || true
   npx prisma migrate resolve --applied "20251010111311_add_password_reset_relation" || true
   npx prisma migrate resolve --applied "20251010175151_fix_user_relations" || true
@@ -30,6 +41,10 @@ if ! npx prisma migrate deploy 2>&1; then
   npx prisma migrate resolve --applied "20251027232858_add_cascade_delete" || true
   npx prisma migrate resolve --applied "20251128123701_add_workout_coach" || true
   npx prisma migrate resolve --applied "20251128125900_add_chapi_mind" || true
+  npx prisma migrate resolve --applied "20251205000000_add_workout_completion" || true
+  npx prisma migrate resolve --applied "20251216000000_add_chapi_context" || true
+  npx prisma migrate resolve --applied "20251216000001_add_hydration_goal" || true
+  npx prisma migrate resolve --applied "20251226115803_add_user_push_token_model" || true
   
   echo "✅ Baseline completado. Aplicando migraciones pendientes..."
   npx prisma migrate deploy

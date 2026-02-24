@@ -19,6 +19,7 @@ export interface Meal {
   fat_g: number;
   tags?: string[];
   ingredients?: MealIngredient[];
+  instructions?: string;
 }
 
 export interface PlanDay {

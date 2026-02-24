@@ -82,6 +82,8 @@ enum Intensity {
 model User {
   id                 String                   @id @default(cuid())
   email              String                   @unique
+  name               String?
+  lastName           String?
   password           String
   emailVerified      Boolean                  @default(false)
   role               UserRole                 @default(USER)
@@ -396,19 +398,20 @@ model PlanDay {
 }
 
 model Meal {
-  id          String           @id @default(cuid())
-  planDayId   String
-  planDay     PlanDay          @relation(fields: [planDayId], references: [id], onDelete: Cascade)
-  slot        MealSlot
-  title       String
-  prepMinutes Int?
-  kcal        Int
-  protein_g   Int
-  carbs_g     Int
-  fat_g       Int
-  tags        String[]
-  ingredients MealIngredient[]
-  logs        MealLog[] // Registros de consumo de esta comida
+  id           String           @id @default(cuid())
+  planDayId    String
+  planDay      PlanDay          @relation(fields: [planDayId], references: [id], onDelete: Cascade)
+  slot         MealSlot
+  title        String
+  prepMinutes  Int?
+  kcal         Int
+  protein_g    Int
+  carbs_g      Int
+  fat_g        Int
+  tags         String[]
+  ingredients  MealIngredient[]
+  instructions String? // Instrucciones de preparación
+  logs         MealLog[] // Registros de consumo de esta comida
 
   @@unique([planDayId, slot])
 }

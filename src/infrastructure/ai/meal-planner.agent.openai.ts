@@ -15,6 +15,7 @@ const MealSchemaCompact = z.object({
   protein_g: z.coerce.number().int().nonnegative().optional().default(0),
   carbs_g: z.coerce.number().int().nonnegative().optional().default(0),
   fat_g: z.coerce.number().int().nonnegative().optional().default(0),
+  instructions: z.string().optional(), // Instrucciones de preparación
 });
 
 const DayResponseSchemaCompact = z.object({
@@ -314,13 +315,37 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
   }
 
   private daySchemaCompact(dayIndexHint?: number) {
-    return `Schema EXACTO (3 comidas: BREAKFAST, LUNCH, DINNER, sin ingredients/tags):
+    return `Schema EXACTO (3 comidas: BREAKFAST, LUNCH, DINNER):
 {
   "dayIndex": ${dayIndexHint ?? '1..7'},
   "meals": [
-    { "slot": "BREAKFAST", "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number },
-    { "slot": "LUNCH", "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number },
-    { "slot": "DINNER", "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number }
+    { 
+      "slot": "BREAKFAST", 
+      "title": string, 
+      "kcal": number, 
+      "protein_g": number, 
+      "carbs_g": number, 
+      "fat_g": number,
+      "instructions": string (pasos de preparación breves)
+    },
+    { 
+      "slot": "LUNCH", 
+      "title": string, 
+      "kcal": number, 
+      "protein_g": number, 
+      "carbs_g": number, 
+      "fat_g": number,
+      "instructions": string (pasos de preparación breves)
+    },
+    { 
+      "slot": "DINNER", 
+      "title": string, 
+      "kcal": number, 
+      "protein_g": number, 
+      "carbs_g": number, 
+      "fat_g": number,
+      "instructions": string (pasos de preparación breves)
+    }
   ]
 }`;
   }
@@ -462,6 +487,10 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
           '- Si necesitas mencionar cantidades o medidas, escríbelas en palabras (ej: "Ensalada de quinoa con verduras" NO "Ensalada de quinoa (200g)")',
           '- NUNCA incluyas saltos de línea dentro de valores string',
           '- ASEGÚRATE de que TODOS los campos numéricos (kcal, protein_g, carbs_g, fat_g) sean números enteros positivos',
+          '⚠️ OBLIGATORIO - INSTRUCCIONES DE PREPARACIÓN:',
+          '- CADA comida DEBE incluir el campo "instructions" con pasos breves de preparación (3-5 pasos)',
+          '- Las instrucciones deben ser claras, concisas y en español neutro',
+          '- Ejemplo: "1. Cocina la avena con leche. 2. Agrega frutas y miel. 3. Sirve caliente."',
           'IMPORTANTE: Varía las proteínas. Rota entre: pollo, pescado, legumbres, huevos, carne roja, tofu, etc. No repitas la misma proteína en comidas consecutivas ni en días consecutivos si es posible.',
           'VARIEDAD CRÍTICA: Cada día debe tener platos DIFERENTES. No repitas desayunos, almuerzos ni cenas. Sé creativo.',
           usedTitlesStr,
@@ -489,8 +518,9 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
                     protein_g: { type: 'integer', minimum: 0 },
                     carbs_g: { type: 'integer', minimum: 0 },
                     fat_g: { type: 'integer', minimum: 0 },
+                    instructions: { type: 'string' },
                   },
-                  required: ['slot', 'title', 'kcal', 'protein_g', 'carbs_g', 'fat_g'],
+                  required: ['slot', 'title', 'kcal', 'protein_g', 'carbs_g', 'fat_g', 'instructions'],
                   additionalProperties: false,
                 },
               },
@@ -512,19 +542,16 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         }
 
         // Log the raw response for debugging
-        if (dayIndex === 6) { // Solo para el día 6 que está fallando
-          console.log(`[MealPlanner] Day ${dayIndex} - Raw AI response:`, raw.substring(0, 800));
-        }
+        console.log(`[MealPlanner] Day ${dayIndex} - Raw AI response:`, raw.substring(0, 1000));
 
         const json = sanitizeToJson(raw);
         
-        if (dayIndex === 6) {
-          console.log(`[MealPlanner] Day ${dayIndex} - After sanitization:`, json.substring(0, 800));
-        }
+        console.log(`[MealPlanner] Day ${dayIndex} - After sanitization:`, json.substring(0, 1000));
         
         let parsedJson: any;
         try {
           parsedJson = JSON.parse(json);
+          console.log(`[MealPlanner] Day ${dayIndex} - Parsed JSON:`, JSON.stringify(parsedJson, null, 2));
         } catch (parseError: any) {
           console.error(`[MealPlanner] JSON parse error for dayIndex=${dayIndex}`);
           console.error(`[MealPlanner] Raw response:`, raw);
@@ -549,6 +576,12 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
           console.error(`[MealPlanner] Parsed JSON structure:`, JSON.stringify(parsedJson, null, 2));
           throw new Error(`Validación JSON falló en dayIndex=${dayIndex}: ${parsed.error.message}`);
         }
+
+        // Log para verificar si instructions está presente después de la validación
+        console.log(`[MealPlanner] Day ${dayIndex} - After Zod validation:`, JSON.stringify(parsed.data, null, 2));
+        parsed.data.meals.forEach((meal, idx) => {
+          console.log(`[MealPlanner] Day ${dayIndex} Meal ${idx} - instructions:`, meal.instructions || 'MISSING');
+        });
 
         // Guardar títulos usados
         parsed.data.meals.forEach((m) => usedTitlesThisWeek.add(m.title.toLowerCase()));
@@ -624,6 +657,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         `Evita títulos repetidos o muy similares a: ${avoidTitles?.slice(0, 40).join(' | ') || '(ninguno)'}`,
         `Varía estilos y combinaciones (semilla: ${seed}).`,
         'IMPORTANTE: Varía las proteínas. Rota entre: pollo, pescado, legumbres, huevos, carne roja, tofu, etc.',
+        '⚠️ OBLIGATORIO: Cada comida DEBE incluir el campo "instructions" con pasos breves de preparación.',
         this.daySchemaCompact(dayIndex),
       ].join('\n\n');
 
@@ -700,7 +734,8 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         `Calorías objetivo entre ${kcalMin} y ${kcalMax}.`,
         `Evita títulos repetidos o muy similares a: ${avoidTitles?.slice(0, 40).join(' | ') || '(ninguno)'}`,
         `Varía estilos y combinaciones (semilla: ${seed}).`,
-        `Esquema exacto de salida (JSON): { "slot": "${target.slot}", "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number }`,
+        `⚠️ OBLIGATORIO: Incluye el campo "instructions" con pasos breves de preparación.`,
+        `Esquema exacto de salida (JSON): { "slot": "${target.slot}", "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "instructions": string }`,
       ].join('\n\n');
 
       const { raw, finish } = await this.askJson({

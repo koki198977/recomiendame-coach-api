@@ -23,6 +23,7 @@ export const PlanMapper = {
               carbs_g: m.carbs_g,
               fat_g: m.fat_g,
               tags: m.tags ?? [],
+              instructions: m.instructions ?? null,
               ingredients: {
                 create: (m.ingredients ?? []).map((i) => ({
                   name: i.name,
@@ -61,6 +62,7 @@ export const PlanMapper = {
           carbs_g: m.carbs_g,
           fat_g: m.fat_g,
           tags: m.tags ?? [],
+          instructions: m.instructions ?? undefined,
           ingredients: (m.ingredients ?? []).map((i: any) => ({
             name: i.name,
             qty: i.qty ?? undefined,

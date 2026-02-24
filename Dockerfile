@@ -5,7 +5,7 @@ WORKDIR /app
 
 
 # Dependencias del sistema necesarias para Prisma en Alpine y para el wait (nc)
-RUN apk add --no-cache libc6-compat openssl netcat-openbsd bash
+RUN apk add --no-cache libc6-compat openssl netcat-openbsd bash postgresql-client
 
 
 # Instala deps
