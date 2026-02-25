@@ -84,11 +84,19 @@ export class ChatWithChapiV2UseCase {
 
       await this.conversationMemory.saveMessage(userMessage);
 
-      // 4. Generar respuesta personalizada con IA
+      // 4. Obtener historial reciente de conversación (últimos 10 mensajes)
+      const recentMessages = await this.conversationMemory.getConversationHistory(userId, 10);
+      const conversationHistory = recentMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
+      // 5. Generar respuesta personalizada con IA (incluyendo historial)
       const chapiResponse = await this.chapiAgent.generatePersonalizedResponse({
         userMessage: message,
         userProfile,
         conversationContext,
+        conversationHistory,
       });
 
       // 5. Guardar la respuesta del asistente

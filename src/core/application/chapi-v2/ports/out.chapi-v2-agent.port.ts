@@ -59,12 +59,14 @@ export interface ChapiV2AgentPort {
    * - El mensaje del usuario
    * - Todo su perfil completo
    * - El contexto conversacional completo
+   * - El historial reciente de mensajes
    * - Análisis predictivo de patrones
    */
   generatePersonalizedResponse(params: {
     userMessage: string;
     userProfile: UserCompleteProfile;
     conversationContext: UserConversationContext;
+    conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
     intent?: string;
   }): Promise<ChapiV2Response>;
 

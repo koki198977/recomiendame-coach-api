@@ -16,23 +16,33 @@ export class OpenAIChapiV2Agent implements ChapiV2AgentPort {
     userMessage: string;
     userProfile: UserCompleteProfile;
     conversationContext: UserConversationContext;
+    conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
     intent?: string;
   }): Promise<ChapiV2Response> {
-    const { userMessage, userProfile, conversationContext } = params;
+    const { userMessage, userProfile, conversationContext, conversationHistory = [] } = params;
 
     const systemPrompt = this.buildSystemPrompt(userProfile, conversationContext);
     const contextPrompt = this.buildContextPrompt(userProfile, conversationContext);
+
+    // Construir el array de mensajes incluyendo el historial reciente
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: contextPrompt },
+    ];
+
+    // Agregar los últimos mensajes de la conversación (máximo 10 para no exceder tokens)
+    const recentHistory = conversationHistory.slice(-10);
+    messages.push(...recentHistory);
+
+    // Agregar el mensaje actual del usuario
+    messages.push({ role: 'user', content: userMessage });
 
     try {
       const completion = await this.client.chat.completions.create({
         model: this.model,
         temperature: 0.7,
         max_tokens: 1500,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: contextPrompt },
-          { role: 'user', content: userMessage },
-        ],
+        messages,
         functions: [
           {
             name: 'generate_personalized_response',
