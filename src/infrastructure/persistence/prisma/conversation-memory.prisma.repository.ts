@@ -8,38 +8,45 @@ export class ConversationMemoryPrismaRepository implements ConversationMemoryPor
   constructor(private prisma: PrismaService) {}
 
   async saveMessage(message: ConversationMessage): Promise<void> {
+
+
     // IMPLEMENTACIÓN TEMPORAL: Guardar en chapiContext hasta aplicar migración
-    const user = await this.prisma.user.findUnique({
-      where: { id: message.userId },
-      select: { chapiContext: true },
-    });
+    // IMPORTANTE: Usar transacción para evitar problemas de concurrencia
+    await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: message.userId },
+        select: { chapiContext: true },
+      });
 
-    const currentContext = (user?.chapiContext as any) || { messages: [] };
-    const messages = currentContext.messages || [];
-    
-    // Mantener solo los últimos 100 mensajes para evitar que crezca demasiado
-    messages.push({
-      id: message.id,
-      role: message.role,
-      content: message.content,
-      timestamp: message.timestamp.toISOString(),
-      messageType: message.messageType,
-      metadata: message.metadata,
-    });
+      const currentContext = (user?.chapiContext as any) || { messages: [] };
+      const messages = currentContext.messages || [];
+      
+      
+      // Mantener solo los últimos 100 mensajes para evitar que crezca demasiado
+      messages.push({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        timestamp: message.timestamp.toISOString(),
+        messageType: message.messageType,
+        metadata: message.metadata,
+      });
 
-    if (messages.length > 100) {
-      messages.splice(0, messages.length - 100);
-    }
+      if (messages.length > 100) {
+        messages.splice(0, messages.length - 100);
+      }
 
-    await this.prisma.user.update({
-      where: { id: message.userId },
-      data: { 
-        chapiContext: {
-          ...currentContext,
-          messages,
-          lastUpdated: new Date().toISOString(),
-        }
-      },
+      await tx.user.update({
+        where: { id: message.userId },
+        data: { 
+          chapiContext: {
+            ...currentContext,
+            messages,
+            lastUpdated: new Date().toISOString(),
+          }
+        },
+      });
+
     });
   }
 
@@ -51,6 +58,14 @@ export class ConversationMemoryPrismaRepository implements ConversationMemoryPor
 
     const context = (user?.chapiContext as any) || { messages: [] };
     const messages = context.messages || [];
+
+    // DEBUG: Log de lo que se recupera
+    console.log('📖 [GET HISTORY] Mensajes en BD:', {
+      total: messages.length,
+      limit: limit,
+      roles: messages.map((m: any) => m.role),
+      lastMessages: messages.slice(-5).map((m: any) => `${m.role}: ${m.content.substring(0, 30)}...`),
+    });
 
     const limitedMessages = limit ? messages.slice(-limit) : messages;
 
@@ -115,9 +130,31 @@ export class ConversationMemoryPrismaRepository implements ConversationMemoryPor
   }
 
   async updateUserConversationContext(context: UserConversationContext): Promise<void> {
-    await this.prisma.user.update({
-      where: { id: context.userId },
-      data: { chapiContext: context as any },
+    // CRÍTICO: Preservar los mensajes existentes al actualizar el contexto
+    await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: context.userId },
+        select: { chapiContext: true },
+      });
+
+      const currentContext = (user?.chapiContext as any) || {};
+      const existingMessages = currentContext.messages || [];
+
+      // DEBUG: Log para ver qué se está actualizando
+      console.log('🔄 [UPDATE CONTEXT] Actualizando contexto, preservando mensajes:', existingMessages.length);
+
+      // Actualizar el contexto PERO preservar los mensajes
+      await tx.user.update({
+        where: { id: context.userId },
+        data: { 
+          chapiContext: {
+            ...context,
+            messages: existingMessages,  // ✅ PRESERVAR mensajes existentes
+          } as any 
+        },
+      });
+
+      console.log('🔄 [UPDATE CONTEXT] ✅ Contexto actualizado, mensajes preservados');
     });
   }
 
