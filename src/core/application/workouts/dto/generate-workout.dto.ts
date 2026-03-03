@@ -1,4 +1,4 @@
-import { IsArray, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsArray, IsInt, IsOptional, IsString, Min, Max } from 'class-validator';
 
 export class GenerateWorkoutDto {
   @IsString()
@@ -19,4 +19,10 @@ export class GenerateWorkoutDto {
   @IsArray()
   @IsString({ each: true })
   equipmentImageUrls?: string[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(7)
+  startDayIndex?: number; // 1=Lunes, 2=Martes, ..., 7=Domingo
 }

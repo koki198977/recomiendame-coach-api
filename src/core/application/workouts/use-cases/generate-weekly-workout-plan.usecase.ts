@@ -19,6 +19,7 @@ export interface GenerateWeeklyWorkoutPlanInput {
   goal: string; // "HYPERTROPHY", "STRENGTH", "ENDURANCE", etc.
   environment?: string; // "HOME", "GYM"
   equipmentImageUrls?: string[]; // URLs de imágenes del equipamiento (opcional)
+  startDayIndex?: number; // 1=Lunes, 2=Martes, ..., 7=Domingo (default: 1)
 }
 
 export interface GenerateWeeklyWorkoutPlanOutput {
@@ -39,6 +40,18 @@ export class GenerateWeeklyWorkoutPlanUseCase {
   ): Promise<Result<GenerateWeeklyWorkoutPlanOutput>> {
     const week = Week.fromISOWeek(input.isoWeek);
 
+    // Validar startDayIndex y daysAvailable
+    const startDayIndex = input.startDayIndex ?? 1;
+    const remainingDays = 8 - startDayIndex; // Días restantes desde startDayIndex hasta el domingo (7)
+    
+    if (input.daysAvailable > remainingDays) {
+      return err(
+        new Error(
+          `No se pueden generar ${input.daysAvailable} días desde el día ${startDayIndex}. Solo quedan ${remainingDays} días disponibles en la semana.`
+        )
+      );
+    }
+
     // Idempotency check
     const exists = await this.workouts.findByUserAndWeek(input.userId, week.start);
     if (exists) {
@@ -57,6 +70,7 @@ export class GenerateWeeklyWorkoutPlanUseCase {
       daysAvailable: input.daysAvailable,
       environment: input.environment,
       equipmentImageUrls: input.equipmentImageUrls,
+      startDayIndex,
     });
 
     // Save Plan

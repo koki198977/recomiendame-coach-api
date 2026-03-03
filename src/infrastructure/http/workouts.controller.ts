@@ -35,6 +35,7 @@ export class WorkoutsController {
       goal: body.goal ?? 'GENERAL',
       environment: body.environment,
       equipmentImageUrls: body.equipmentImageUrls,
+      startDayIndex: body.startDayIndex ?? 1,
     });
 
     if (result.ok) {

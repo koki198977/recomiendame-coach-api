@@ -46,6 +46,7 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
     daysAvailable,
     environment,
     equipmentImageUrls,
+    startDayIndex = 1,
   }: {
     userId: string;
     weekStart: Date;
@@ -54,6 +55,7 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
     daysAvailable: number;
     environment?: string;
     equipmentImageUrls?: string[];
+    startDayIndex?: number;
   }): Promise<{ days: WorkoutDay[]; notes?: string }> {
     try {
       const system = `Eres un entrenador personal experto (Coach de Gym).
@@ -61,6 +63,11 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
       Responde SIEMPRE en español neutro.
       Devuelve únicamente JSON válido (sin bloques de código ni explicaciones).
       El formato de respuesta debe cumplir estrictamente con el esquema solicitado.`;
+
+      // Mapeo de índices a nombres de días
+      const dayNames = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      const startDayName = dayNames[startDayIndex];
+      const remainingDays = 8 - startDayIndex;
 
       // Construir el prompt base
       let equipmentContext = '';
@@ -120,9 +127,16 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
       
       ${equipmentContext}
       
+      **IMPORTANTE - RESTRICCIÓN DE DÍAS:**
+      - La rutina debe empezar desde el día ${startDayIndex} (${startDayName}).
+      - Solo puedes usar los días desde ${startDayIndex} hasta 7 (Domingo).
+      - Quedan ${remainingDays} días disponibles en la semana.
+      - Genera exactamente ${daysAvailable} días de entrenamiento usando SOLO dayIndex >= ${startDayIndex}.
+      - Ejemplo: Si startDayIndex=2 (Martes), solo puedes usar dayIndex: 2, 3, 4, 5, 6, 7.
+      
       **Requisitos:**
       - Genera exactamente ${daysAvailable} días de entrenamiento.
-      - Distribuye los días lógicamente (ej: Lunes, Martes, Jueves, Viernes).
+      - Distribuye los días lógicamente desde ${startDayName} en adelante.
       - Incluye ejercicios compuestos y de aislamiento según el objetivo.
       - Especifica series, repeticiones (rango), y descanso sugerido.
       - **VISUALIZACIÓN:** Para cada ejercicio, incluye:
@@ -136,7 +150,7 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
         "notes": "Breve consejo o foco para la semana",
         "days": [
           {
-            "dayIndex": 1, // 1=Lunes, 7=Domingo
+            "dayIndex": ${startDayIndex}, // DEBE ser >= ${startDayIndex} y <= 7
             "exercises": [
               { 
                 "name": "Sentadilla con barra", 
@@ -193,6 +207,14 @@ export class OpenAIWorkoutPlannerAgent implements WorkoutPlannerAgentPort {
 
       if (!parsed.success) {
         throw new Error(`Error validación JSON Workout: ${parsed.error.message}`);
+      }
+
+      // Validar que todos los días generados cumplan con startDayIndex
+      const invalidDays = parsed.data.days.filter(d => d.dayIndex < startDayIndex);
+      if (invalidDays.length > 0) {
+        throw new Error(
+          `El agente generó días inválidos. Se esperaban días >= ${startDayIndex}, pero se encontraron: ${invalidDays.map(d => d.dayIndex).join(', ')}`
+        );
       }
 
       const days: WorkoutDay[] = parsed.data.days.map((d) => ({
