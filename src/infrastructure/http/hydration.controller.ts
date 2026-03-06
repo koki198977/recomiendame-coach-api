@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Put, Delete, Param, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Delete, Param, Query, Request, UseGuards, BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LogWaterIntakeUseCase } from '../../core/application/hydration/use-cases/log-water-intake.usecase';
 import { GetHydrationStatsUseCase } from '../../core/application/hydration/use-cases/get-hydration-stats.usecase';
@@ -23,16 +23,27 @@ export class HydrationController {
     @Request() req: any
   ) {
     const userId = req.user.userId ?? req.user.sub;
-    const result = await this.logWaterIntake.execute({
-      userId,
-      ml: body.ml,
-      date: body.date ? new Date(body.date) : undefined,
-    });
+    
+    try {
+      const result = await this.logWaterIntake.execute({
+        userId,
+        ml: body.ml,
+        date: body.date ? new Date(body.date) : undefined,
+      });
 
-    if (result.ok) {
-      return result.value;
-    } else {
-      throw result.error;
+      if (result.ok) {
+        return result.value;
+      } else {
+        // Manejar el error correctamente con BadRequestException
+        const error = result.error;
+        throw new BadRequestException(error.message || 'Error al registrar hidratación');
+      }
+    } catch (error: any) {
+      console.error('❌ Error en /hydration/log:', error.message);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(error.message || 'Error al registrar hidratación');
     }
   }
 

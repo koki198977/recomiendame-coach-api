@@ -103,18 +103,7 @@ export class MealsController {
   @UseInterceptors(FileInterceptor('audio'))
   async transcribe(
     @UploadedFile() audioFile: Express.Multer.File,
-    @Request() req: any,
   ) {
-    console.log('🎤 Transcribe endpoint called');
-    console.log('Request headers:', req.headers['content-type']);
-    console.log('Audio file received:', {
-      exists: !!audioFile,
-      fieldname: audioFile?.fieldname,
-      originalname: audioFile?.originalname,
-      mimetype: audioFile?.mimetype,
-      size: audioFile?.size,
-    });
-    
     return this.transcribeAudio.execute(audioFile);
   }
 }

@@ -28,9 +28,18 @@ export class LogWaterIntakeUseCase {
     try {
       const { userId, ml, date = new Date() } = input;
 
-      // Validaciones
-      if (ml <= 0 || ml > 2000) {
-        return err(new Error('La cantidad debe estar entre 1ml y 2000ml'));
+      // Validaciones mejoradas
+      if (ml <= 0) {
+        return err(new Error('La cantidad debe ser mayor a 0ml'));
+      }
+
+      if (ml > 10000) {
+        return err(new Error('La cantidad máxima permitida es 10000ml (10L) por registro'));
+      }
+
+      // Advertencia para cantidades muy altas
+      if (ml > 3000) {
+        console.warn(`⚠️ Usuario ${userId} registró ${ml}ml (más de 3L en un solo registro)`);
       }
 
       // Crear el log
@@ -58,7 +67,8 @@ export class LogWaterIntakeUseCase {
         message,
         achievements: achievements.length > 0 ? achievements : undefined,
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('❌ Error en LogWaterIntakeUseCase:', error);
       return err(error);
     }
   }

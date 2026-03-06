@@ -7,14 +7,36 @@ export class LogMealUseCase {
   constructor(private prisma: PrismaService) {}
 
   async execute(userId: string, dto: LogMealDto) {
-    const mealDate = dto.date ? new Date(dto.date) : new Date();
+    // Importar utilidades de fecha de Chile
+    const { getChileDayStart } = await import('../../../domain/common/chile-date.util');
+    
+    // Manejar la fecha correctamente usando la zona horaria de Chile
+    let mealDate: Date;
+    
+    if (dto.date) {
+      // Usar la utilidad de Chile para obtener el inicio del día
+      // Esto asegura que la fecha se guarde en el rango correcto para Chile
+      mealDate = getChileDayStart(dto.date);
+    } else {
+      mealDate = new Date();
+    }
+    
     const today = new Date();
-    today.setHours(23, 59, 59, 999); // Fin del día de hoy
+    today.setHours(23, 59, 59, 999);
 
     // Validar que no sea fecha futura
     if (mealDate > today) {
       throw new BadRequestException('No se pueden registrar comidas futuras');
     }
+
+    console.log('📝 Registrando comida:', {
+      userId,
+      title: dto.title,
+      slot: dto.slot,
+      dateInput: dto.date,
+      mealDate: mealDate.toISOString(),
+      mealDateLocal: mealDate.toLocaleString('es-CL', { timeZone: 'America/Santiago' }),
+    });
 
     const mealLog = await this.prisma.mealLog.create({
       data: {
@@ -30,6 +52,12 @@ export class LogMealUseCase {
         notes: dto.notes,
         imageUrl: dto.imageUrl,
       },
+    });
+
+    console.log('✅ Comida guardada:', {
+      id: mealLog.id,
+      date: mealLog.date.toISOString(),
+      dateLocal: mealLog.date.toLocaleString('es-CL', { timeZone: 'America/Santiago' }),
     });
 
     return {
