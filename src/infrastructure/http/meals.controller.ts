@@ -10,7 +10,10 @@ import {
   Request,
   UseGuards,
   ValidationPipe,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LogMealDto } from '../../core/application/meals/dto/log-meal.dto';
 import { AnalyzeMealDto } from '../../core/application/meals/dto/analyze-meal.dto';
@@ -19,6 +22,7 @@ import { GetMealsTodayUseCase } from '../../core/application/meals/use-cases/get
 import { MarkMealConsumedUseCase } from '../../core/application/meals/use-cases/mark-meal-consumed.usecase';
 import { AnalyzeMealImageUseCase } from '../../core/application/meals/use-cases/analyze-meal-image.usecase';
 import { DeleteMealLogUseCase } from '../../core/application/meals/use-cases/delete-meal-log.usecase';
+import { TranscribeAudioUseCase } from '../../core/application/meals/use-cases/transcribe-audio.usecase';
 import { NotificationTriggersService } from '../../modules/notification-triggers.service';
 import { HealthAwareNotificationsService } from '../../modules/health-aware-notifications.service';
 
@@ -31,6 +35,7 @@ export class MealsController {
     private readonly markMealConsumed: MarkMealConsumedUseCase,
     private readonly analyzeMealImage: AnalyzeMealImageUseCase,
     private readonly deleteMealLog: DeleteMealLogUseCase,
+    private readonly transcribeAudio: TranscribeAudioUseCase,
     private readonly notificationTriggers: NotificationTriggersService,
     private readonly healthAwareNotifications: HealthAwareNotificationsService,
   ) {}
@@ -92,5 +97,13 @@ export class MealsController {
   ) {
     const userId = req.user.userId ?? req.user.sub;
     return this.deleteMealLog.execute(userId, mealLogId);
+  }
+
+  @Post('transcribe-audio')
+  @UseInterceptors(FileInterceptor('audio'))
+  async transcribe(
+    @UploadedFile() audioFile: Express.Multer.File,
+  ) {
+    return this.transcribeAudio.execute(audioFile);
   }
 }

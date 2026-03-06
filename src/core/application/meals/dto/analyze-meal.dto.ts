@@ -1,11 +1,13 @@
-import { IsString, IsOptional, IsUrl } from 'class-validator';
+import { IsString, IsOptional, IsUrl, ValidateIf } from 'class-validator';
 
 export class AnalyzeMealDto {
+  @IsOptional()
+  @ValidateIf((o) => o.imageUrl && o.imageUrl !== '')
   @IsString()
   @IsUrl()
-  imageUrl: string;
+  imageUrl?: string;
 
   @IsOptional()
   @IsString()
-  description?: string; // Descripción opcional del usuario para ayudar a la IA
+  description?: string; // Descripción del usuario (requerida si no hay imagen)
 }

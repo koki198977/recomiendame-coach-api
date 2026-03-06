@@ -8,7 +8,81 @@ export class AnalyzeMealImageUseCase {
     timeout: +(process.env.OPENAI_TIMEOUT_MS ?? 30000),
   });
 
-  async execute(imageUrl: string, userDescription?: string) {
+  async execute(imageUrl?: string, userDescription?: string) {
+    // Validar que al menos uno esté presente
+    if (!imageUrl && !userDescription) {
+      throw new BadRequestException('Debe proporcionar una imagen o una descripción');
+    }
+
+    // Si solo hay descripción (sin imagen)
+    if (!imageUrl || imageUrl === '') {
+      return this.analyzeFromText(userDescription!);
+    }
+
+    // Si hay imagen (con o sin descripción)
+    return this.analyzeFromImage(imageUrl, userDescription);
+  }
+
+  private async analyzeFromText(description: string) {
+    try {
+      const prompt = `Analiza esta descripción de comida: "${description}"
+
+Estima los valores nutricionales totales basándote en la descripción.
+
+Devuelve SOLO un JSON con este formato exacto:
+{
+  "title": "Nombre descriptivo del plato",
+  "kcal": número_entero,
+  "protein_g": número_entero,
+  "carbs_g": número_entero,
+  "fat_g": número_entero,
+  "confidence": "high" | "medium" | "low",
+  "notes": "Breve explicación de cómo estimaste los valores"
+}
+
+Sé realista con las porciones. Si la descripción es vaga, indica confidence: "low".`;
+
+      const completion = await this.client.chat.completions.create({
+        model: 'gpt-4o',
+        temperature: 0.3,
+        max_tokens: 500,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: 'Eres un nutricionista experto. Analiza descripciones de comida y estima valores nutricionales de forma precisa y realista.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      });
+
+      const raw = completion.choices[0]?.message?.content ?? '{}';
+      const result = JSON.parse(raw);
+
+      if (!result.title || !result.kcal || !result.protein_g || !result.carbs_g || !result.fat_g) {
+        throw new Error('Respuesta incompleta de la IA');
+      }
+
+      return {
+        title: result.title,
+        kcal: Math.round(result.kcal),
+        protein_g: Math.round(result.protein_g),
+        carbs_g: Math.round(result.carbs_g),
+        fat_g: Math.round(result.fat_g),
+        confidence: result.confidence || 'medium',
+        notes: result.notes || '',
+      };
+    } catch (error: any) {
+      throw new BadRequestException(
+        `Error al analizar la descripción: ${error.message}`
+      );
+    }
+  }
+
+  private async analyzeFromImage(imageUrl: string, userDescription?: string) {
     try {
       const prompt = userDescription
         ? `Analiza esta imagen de comida. El usuario describe: "${userDescription}".

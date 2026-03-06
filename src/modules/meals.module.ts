@@ -5,6 +5,7 @@ import { GetMealsTodayUseCase } from '../core/application/meals/use-cases/get-me
 import { MarkMealConsumedUseCase } from '../core/application/meals/use-cases/mark-meal-consumed.usecase';
 import { AnalyzeMealImageUseCase } from '../core/application/meals/use-cases/analyze-meal-image.usecase';
 import { DeleteMealLogUseCase } from '../core/application/meals/use-cases/delete-meal-log.usecase';
+import { TranscribeAudioUseCase } from '../core/application/meals/use-cases/transcribe-audio.usecase';
 import { PrismaModule } from '../infrastructure/database/prisma.module';
 import { NotificationsModule } from './notifications.module';
 
@@ -17,6 +18,7 @@ import { NotificationsModule } from './notifications.module';
     MarkMealConsumedUseCase,
     AnalyzeMealImageUseCase,
     DeleteMealLogUseCase,
+    TranscribeAudioUseCase,
   ],
 })
 export class MealsModule {}
