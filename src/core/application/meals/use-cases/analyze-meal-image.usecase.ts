@@ -62,7 +62,7 @@ Sé realista con las porciones. Si la descripción es vaga, indica confidence: "
       const raw = completion.choices[0]?.message?.content ?? '{}';
       const result = JSON.parse(raw);
 
-      if (!result.title || !result.kcal || !result.protein_g || !result.carbs_g || !result.fat_g) {
+      if (!result.title || result.kcal == null || result.protein_g == null || result.carbs_g == null || result.fat_g == null) {
         throw new Error('Respuesta incompleta de la IA');
       }
 
@@ -146,7 +146,7 @@ Sé realista con las porciones. Si no estás seguro, indica confidence: "low".`;
       const result = JSON.parse(raw);
 
       // Validar que tenga los campos necesarios
-      if (!result.title || !result.kcal || !result.protein_g || !result.carbs_g || !result.fat_g) {
+      if (!result.title || result.kcal == null || result.protein_g == null || result.carbs_g == null || result.fat_g == null) {
         throw new Error('Respuesta incompleta de la IA');
       }
 
