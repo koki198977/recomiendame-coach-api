@@ -25,7 +25,8 @@ import { TOKEN_GENERATOR } from '../core/application/auth/ports/out.token-genera
 import { CryptoTokenGenerator } from '../infrastructure/security/token-generator.adapter';
 import { ConfigService } from '@nestjs/config';
 import { MailerModule } from '@nestjs-modules/mailer';
-import { HandlebarsAdapter } from '@nestjs-modules/mailer';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { HandlebarsAdapter } = require('@nestjs-modules/mailer/dist/adapters/handlebars.adapter');
 import { join } from 'path';
 import { existsSync } from 'fs';
 
