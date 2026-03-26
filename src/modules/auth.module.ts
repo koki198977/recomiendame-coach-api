@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer';
 import { AuthController } from '../infrastructure/http/auth.controller';
 import { LoginUseCase } from '../core/application/auth/use-cases/login.usecase';
 import { TOKEN_SIGNER } from '../core/application/auth/ports/out.token-signer.port';
