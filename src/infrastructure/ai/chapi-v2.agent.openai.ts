@@ -326,6 +326,19 @@ ESTADO ACTUAL:
       summaries.push(`- Emociones recientes: ${emotions.join(', ')}`);
     }
 
+    if (userProfile.recentMeals.length > 0) {
+      const meals = userProfile.recentMeals.slice(0, 21);
+      const mealLines = meals.map((m: any) => {
+        const date = m.date ? new Date(m.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }) : '??/??';
+        const name = m.name || m.mealName || 'Comida sin nombre';
+        const kcal = m.calories != null ? `${m.calories} kcal` : 'kcal desconocidas';
+        return `  • [${date}] ${name} — ${kcal}`;
+      });
+      summaries.push(`- Últimas comidas registradas:\n${mealLines.join('\n')}`);
+    } else {
+      summaries.push(`- Sin comidas registradas recientemente`);
+    }
+
     return summaries.join('\n') || '- Sin datos recientes disponibles';
   }
 }
