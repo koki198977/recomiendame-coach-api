@@ -326,6 +326,19 @@ ESTADO ACTUAL:
       summaries.push(`- Emociones recientes: ${emotions.join(', ')}`);
     }
 
+    if (userProfile.recentFreeExercises && userProfile.recentFreeExercises.length > 0) {
+      const exercises = userProfile.recentFreeExercises.slice(0, 10);
+      const exerciseLines = exercises.map((e: any) => {
+        const date = e.date ? new Date(e.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }) : '??/??';
+        const type = e.activityType === 'OTHER' && e.customActivityName ? e.customActivityName : e.activityType;
+        const duration = `${e.durationMinutes} min`;
+        const distance = e.distanceKm != null ? `, ${e.distanceKm} km` : '';
+        const kcal = `${e.caloriesBurned} kcal${e.caloriesEstimated ? ' (est.)' : ''}`;
+        return `  • [${date}] ${type} — ${duration}${distance}, ${kcal}`;
+      });
+      summaries.push(`- Ejercicios libres recientes:\n${exerciseLines.join('\n')}`);
+    }
+
     if (userProfile.recentMeals.length > 0) {
       const meals = userProfile.recentMeals.slice(0, 21);
       const mealLines = meals.map((m: any) => {

@@ -32,6 +32,7 @@ export interface UserCompleteProfile {
   recentActivity: any[];
   recentMeals: any[];
   recentEmotions: any[];
+  recentFreeExercises: any[];
   
   // Objetivos y planes actuales
   currentGoals: any[];

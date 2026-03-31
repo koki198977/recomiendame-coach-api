@@ -48,6 +48,11 @@ export class UserProfileAggregatorPrismaRepository implements UserProfileAggrega
           orderBy: { date: 'desc' },
           take: 30,
         },
+        freeExerciseLogs: {
+          where: { date: { gte: thirtyDaysAgo } },
+          orderBy: { date: 'desc' },
+          take: 30,
+        },
         goals: {
           orderBy: { createdAt: 'desc' },
         },
@@ -118,6 +123,7 @@ export class UserProfileAggregatorPrismaRepository implements UserProfileAggrega
       recentActivity: user.activityLogs,
       recentMeals: user.mealLogs,
       recentEmotions: user.emotionalLogs,
+      recentFreeExercises: user.freeExerciseLogs,
       currentGoals: user.goals,
       activePlans: user.plans,
       activeWorkouts: user.workoutPlans,

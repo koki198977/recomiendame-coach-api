@@ -76,6 +76,17 @@ enum Intensity {
   HIGH
 }
 
+enum ActivityType {
+  RUNNING
+  WALKING
+  CYCLING
+  SWIMMING
+  ELLIPTICAL
+  ROWING
+  JUMP_ROPE
+  OTHER
+}
+
 /**
  * ===== Modelos base de usuarios/social =====
  */
@@ -153,6 +164,9 @@ model User {
 
   // Meal Logging
   mealLogs MealLog[]
+
+  // Free Exercise Tracking
+  freeExerciseLogs FreeExerciseLog[]
 }
 
 model EmailVerificationToken {
@@ -692,4 +706,23 @@ model ConversationMessage {
 
   @@index([userId, timestamp])
   @@index([userId, messageType])
+}
+
+/**
+ * ===== Free Exercise Tracking (Registro de ejercicio libre) =====
+ */
+model FreeExerciseLog {
+  id                 String       @id @default(cuid())
+  userId             String
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityType       ActivityType
+  durationMinutes    Int
+  distanceKm         Decimal?     @db.Decimal(6, 2)
+  caloriesBurned     Int
+  caloriesEstimated  Boolean
+  customActivityName String?
+  date               DateTime
+  createdAt          DateTime     @default(now())
+
+  @@index([userId, date])
 }
