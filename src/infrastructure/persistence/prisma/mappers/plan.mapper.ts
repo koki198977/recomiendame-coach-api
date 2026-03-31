@@ -54,6 +54,7 @@ export const PlanMapper = {
       days: (p.days ?? []).map((d: any) => ({
         dayIndex: d.dayIndex,
         meals: (d.meals ?? []).map((m: any) => ({
+          id: m.id,
           slot: m.slot,
           title: m.title,
           prepMinutes: m.prepMinutes ?? undefined,

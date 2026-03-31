@@ -42,36 +42,14 @@ export class PlanPrismaRepository implements PlanRepositoryPort {
 
   async save(plan: Plan): Promise<Result<Plan>> {
     try {
-      // Log para verificar que instructions está presente antes de guardar
-      console.log('[PlanRepository] Saving plan with days:', plan.days.length);
-      plan.days.forEach((day, dayIdx) => {
-        console.log(`[PlanRepository] Day ${day.dayIndex} has ${day.meals.length} meals`);
-        day.meals.forEach((meal, mealIdx) => {
-          console.log(`[PlanRepository] Day ${day.dayIndex} Meal ${mealIdx} (${meal.title}) - instructions:`, meal.instructions || 'MISSING');
-        });
-      });
-
       const created = await this.prisma.$transaction(async (tx) => {
         const data = PlanMapper.toPrismaData(plan);
-        
-        // Log del data que se va a guardar (solo estructura, no todo el contenido)
-        console.log('[PlanRepository] Saving plan with', data.days.create.length, 'days');
-        
         const p = await tx.plan.create({
           data,
           include: {
             days: { include: { meals: { include: { ingredients: true } } } },
           },
         });
-        
-        // Log después de guardar para verificar que instructions se guardó
-        console.log('[PlanRepository] Plan saved successfully. Verifying instructions...');
-        p.days.forEach((day: any) => {
-          day.meals.forEach((meal: any) => {
-            console.log(`[PlanRepository] Saved - Day ${day.dayIndex} Meal "${meal.title}" - instructions:`, meal.instructions ? 'PRESENT' : 'NULL');
-          });
-        });
-        
         return p;
       });
       return ok(PlanMapper.fromPrisma(created));

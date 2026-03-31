@@ -10,6 +10,7 @@ export interface MealIngredient {
   category?: string;
 }
 export interface Meal {
+  id?: string;
   slot: MealSlot;
   title: string;
   prepMinutes?: number;

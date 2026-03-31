@@ -3,6 +3,9 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
+  HttpStatus,
+  InternalServerErrorException,
   Param,
   Patch,
   Post,
@@ -23,6 +26,7 @@ import { MarkMealConsumedUseCase } from '../../core/application/meals/use-cases/
 import { AnalyzeMealImageUseCase } from '../../core/application/meals/use-cases/analyze-meal-image.usecase';
 import { DeleteMealLogUseCase } from '../../core/application/meals/use-cases/delete-meal-log.usecase';
 import { TranscribeAudioUseCase } from '../../core/application/meals/use-cases/transcribe-audio.usecase';
+import { GetMealDetailsUseCase } from '../../core/application/plans/use-cases/get-meal-details.usecase';
 import { NotificationTriggersService } from '../../modules/notification-triggers.service';
 import { HealthAwareNotificationsService } from '../../modules/health-aware-notifications.service';
 
@@ -36,6 +40,7 @@ export class MealsController {
     private readonly analyzeMealImage: AnalyzeMealImageUseCase,
     private readonly deleteMealLog: DeleteMealLogUseCase,
     private readonly transcribeAudio: TranscribeAudioUseCase,
+    private readonly getMealDetails: GetMealDetailsUseCase,
     private readonly notificationTriggers: NotificationTriggersService,
     private readonly healthAwareNotifications: HealthAwareNotificationsService,
   ) {}
@@ -105,5 +110,21 @@ export class MealsController {
     @UploadedFile() audioFile: Express.Multer.File,
   ) {
     return this.transcribeAudio.execute(audioFile);
+  }
+
+  @Get(':id/details')
+  async getDetails(@Param('id') mealId: string, @Request() req: any) {
+    const userId = req.user.userId ?? req.user.sub;
+    try {
+      return await this.getMealDetails.execute(mealId, userId);
+    } catch (e: any) {
+      if (e instanceof InternalServerErrorException) {
+        throw new HttpException(
+          { message: 'Servicio de IA no disponible. Intenta de nuevo más tarde.', error: 'Bad Gateway', statusCode: 502 },
+          HttpStatus.BAD_GATEWAY,
+        );
+      }
+      throw e;
+    }
   }
 }

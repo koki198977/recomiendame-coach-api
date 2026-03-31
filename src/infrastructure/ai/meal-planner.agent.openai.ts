@@ -15,7 +15,6 @@ const MealSchemaCompact = z.object({
   protein_g: z.coerce.number().int().nonnegative().optional().default(0),
   carbs_g: z.coerce.number().int().nonnegative().optional().default(0),
   fat_g: z.coerce.number().int().nonnegative().optional().default(0),
-  instructions: z.string().optional(), // Instrucciones de preparación
 });
 
 const DayResponseSchemaCompact = z.object({
@@ -33,17 +32,6 @@ const WeekResponseSchema = z.object({
       }),
     )
     .length(7),
-});
-
-// Para micro-prompt de ingredientes
-const IngredientSchema = z.object({
-  name: z.string(),
-  qty: z.coerce.number().positive().optional(),
-  unit: z.string().optional(),
-  category: z.string().optional(),
-});
-const IngredientListSchema = z.object({
-  ingredients: z.array(IngredientSchema).min(3).max(7),
 });
 
 // Sanitizar y reparar JSON malformado - Encuentra el primer JSON válido
@@ -115,7 +103,7 @@ function sanitizeToJson(raw: string): string {
   cleaned = cleaned.slice(start, end + 1);
   
   // Step 5: Minimal cleaning - only remove newlines from string values
-  cleaned = cleaned.replace(/"((?:[^"\\]|\\.)*)"/g, (match, content) => {
+  cleaned = cleaned.replace(/"((?:[^"\\]|\\.)*)"/g, (_, content) => {
     let fixed = content
       .replace(/\n/g, ' ')
       .replace(/\r/g, ' ')
@@ -128,32 +116,9 @@ function sanitizeToJson(raw: string): string {
   try {
     JSON.parse(cleaned);
     return cleaned;
-  } catch (e: any) {
-    console.error('[sanitizeToJson] Still failed after cleaning:', e.message);
-    console.error('[sanitizeToJson] Cleaned JSON:', cleaned.substring(0, 500));
+  } catch {
     return cleaned;
   }
-}
-
-// util: concurrent mapper con límite
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const ret: R[] = new Array(items.length) as R[];
-  let idx = 0;
-  const workers = Array(Math.min(limit, items.length))
-    .fill(0)
-    .map(async () => {
-      while (true) {
-        const i = idx++;
-        if (i >= items.length) break;
-        ret[i] = await fn(items[i]);
-      }
-    });
-  await Promise.all(workers);
-  return ret;
 }
 
 function weekSeed(userId: string, weekStart: Date): number {
@@ -177,8 +142,6 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
 
   private model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
   private maxTokens = +(5000); // por día / swap
-  private concurrency = +(process.env.OPENAI_CONCURRENCY ?? 3);
-  private ingConcurrency = Math.max(1, Math.min(4, +(process.env.OPENAI_ING_CONCURRENCY ?? 2)));
 
   constructor(private prisma: PrismaService) {}
 
@@ -319,76 +282,11 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
 {
   "dayIndex": ${dayIndexHint ?? '1..7'},
   "meals": [
-    { 
-      "slot": "BREAKFAST", 
-      "title": string, 
-      "kcal": number, 
-      "protein_g": number, 
-      "carbs_g": number, 
-      "fat_g": number,
-      "instructions": string (pasos de preparación breves)
-    },
-    { 
-      "slot": "LUNCH", 
-      "title": string, 
-      "kcal": number, 
-      "protein_g": number, 
-      "carbs_g": number, 
-      "fat_g": number,
-      "instructions": string (pasos de preparación breves)
-    },
-    { 
-      "slot": "DINNER", 
-      "title": string, 
-      "kcal": number, 
-      "protein_g": number, 
-      "carbs_g": number, 
-      "fat_g": number,
-      "instructions": string (pasos de preparación breves)
-    }
+    { "slot": "BREAKFAST", "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number },
+    { "slot": "LUNCH",     "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number },
+    { "slot": "DINNER",    "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number }
   ]
 }`;
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // Ingredientes (micro-prompt por comida)
-  private async draftIngredientsForMeal(meal: { title: string; slot: string }) {
-    const system = 'Responde SIEMPRE en español. Devuelve únicamente JSON válido (sin explicaciones).';
-    const user = [
-      `Dado este plato: "${meal.title}" (slot: ${meal.slot}).`,
-      `Devuelve de 3 a 7 ingredientes con cantidad y unidad cuando aplique.`,
-      `Formato exacto: { "ingredients": [ { "name": string, "qty"?: number, "unit"?: string, "category"?: string } ] }`,
-      `Ejemplos de unidades: "g", "ml", "cda", "cdta", "taza", "unidad".`,
-      `Evita cantidades absurdas. Mantén español neutro.`,
-    ].join('\n');
-
-    const { raw } = await this.askJson({
-      system,
-      user,
-      maxTokens: 220,
-    });
-
-    const json = sanitizeToJson(raw);
-    const parsed = IngredientListSchema.safeParse(JSON.parse(json));
-    if (!parsed.success) {
-      // Si falla el parseo, devolvemos vacío (no bloqueamos el flujo)
-      return [] as Array<{ name: string; qty?: number; unit?: string; category?: string }>;
-    }
-    return parsed.data.ingredients;
-  }
-
-  private async ensureIngredients(days: PlanDay[]) {
-    // Recorremos todas las comidas de la semana y pedimos ingredientes a las que no tengan
-    const allMeals: Array<{ day: PlanDay; index: number }> = [];
-    for (const d of days) {
-      d.meals.forEach((_, i) => allMeals.push({ day: d, index: i }));
-    }
-    await mapWithConcurrency(allMeals, this.ingConcurrency, async ({ day, index }) => {
-      const m = day.meals[index] as any;
-      if (!m.ingredients || m.ingredients.length === 0) {
-        m.ingredients = await this.draftIngredientsForMeal({ title: m.title, slot: m.slot });
-      }
-    });
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -446,18 +344,6 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
       ];
       const themeIdx = seed % themes.length;
 
-      // rotación de slots
-      // Ahora siempre son 3 comidas: BREAKFAST, LUNCH, DINNER
-      const slotPatterns: Array<Array<'BREAKFAST' | 'LUNCH' | 'DINNER'>> = [
-        ['BREAKFAST', 'LUNCH', 'DINNER'],
-        ['BREAKFAST', 'LUNCH', 'DINNER'],
-        ['BREAKFAST', 'LUNCH', 'DINNER'],
-        ['BREAKFAST', 'LUNCH', 'DINNER'],
-        ['BREAKFAST', 'LUNCH', 'DINNER'],
-        ['BREAKFAST', 'LUNCH', 'DINNER'],
-        ['BREAKFAST', 'LUNCH', 'DINNER'],
-      ];
-
       const baseContext = this.commonContext(macros, preferences, Array.from(prevTitles));
 
       // anti-repetición semanal - GENERACIÓN SECUENCIAL para mejor variedad
@@ -468,8 +354,6 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
       
       // Generar día por día (secuencial) para evitar repeticiones
       for (const dayIndex of dayIndices) {
-        const slots = slotPatterns[(themeIdx + dayIndex - 1) % slotPatterns.length];
-        
         // Lista de títulos usados hasta ahora (limitado a 15 para no saturar el prompt)
         const usedTitlesStr = usedTitlesThisWeek.size > 0 
           ? `Ya usaste en días anteriores: ${[...usedTitlesThisWeek].slice(-15).join(', ')}. NO REPITAS NINGUNO.`
@@ -487,10 +371,6 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
           '- Si necesitas mencionar cantidades o medidas, escríbelas en palabras (ej: "Ensalada de quinoa con verduras" NO "Ensalada de quinoa (200g)")',
           '- NUNCA incluyas saltos de línea dentro de valores string',
           '- ASEGÚRATE de que TODOS los campos numéricos (kcal, protein_g, carbs_g, fat_g) sean números enteros positivos',
-          '⚠️ OBLIGATORIO - INSTRUCCIONES DE PREPARACIÓN:',
-          '- CADA comida DEBE incluir el campo "instructions" con pasos breves de preparación (3-5 pasos)',
-          '- Las instrucciones deben ser claras, concisas y en español neutro',
-          '- Ejemplo: "1. Cocina la avena con leche. 2. Agrega frutas y miel. 3. Sirve caliente."',
           'IMPORTANTE: Varía las proteínas. Rota entre: pollo, pescado, legumbres, huevos, carne roja, tofu, etc. No repitas la misma proteína en comidas consecutivas ni en días consecutivos si es posible.',
           'VARIEDAD CRÍTICA: Cada día debe tener platos DIFERENTES. No repitas desayunos, almuerzos ni cenas. Sé creativo.',
           usedTitlesStr,
@@ -518,9 +398,8 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
                     protein_g: { type: 'integer', minimum: 0 },
                     carbs_g: { type: 'integer', minimum: 0 },
                     fat_g: { type: 'integer', minimum: 0 },
-                    instructions: { type: 'string' },
                   },
-                  required: ['slot', 'title', 'kcal', 'protein_g', 'carbs_g', 'fat_g', 'instructions'],
+                  required: ['slot', 'title', 'kcal', 'protein_g', 'carbs_g', 'fat_g'],
                   additionalProperties: false,
                 },
               },
@@ -541,47 +420,19 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
           throw new Error(`Truncado por tokens en dayIndex=${dayIndex}. Sube OPENAI_MAX_TOKENS.`);
         }
 
-        // Log the raw response for debugging
-        console.log(`[MealPlanner] Day ${dayIndex} - Raw AI response:`, raw.substring(0, 1000));
-
         const json = sanitizeToJson(raw);
-        
-        console.log(`[MealPlanner] Day ${dayIndex} - After sanitization:`, json.substring(0, 1000));
         
         let parsedJson: any;
         try {
           parsedJson = JSON.parse(json);
-          console.log(`[MealPlanner] Day ${dayIndex} - Parsed JSON:`, JSON.stringify(parsedJson, null, 2));
         } catch (parseError: any) {
-          console.error(`[MealPlanner] JSON parse error for dayIndex=${dayIndex}`);
-          console.error(`[MealPlanner] Raw response:`, raw);
-          console.error(`[MealPlanner] Sanitized JSON:`, json);
-          console.error(`[MealPlanner] Parse error:`, parseError.message);
-          console.error(`[MealPlanner] Problematic character at position:`, parseError.message.match(/position (\d+)/)?.[1]);
-          
-          // Try to show context around the error position
-          if (parseError.message.includes('position')) {
-            const pos = parseInt(parseError.message.match(/position (\d+)/)?.[1] || '0');
-            const start = Math.max(0, pos - 50);
-            const end = Math.min(json.length, pos + 50);
-            console.error(`[MealPlanner] Context around error:`, json.substring(start, end));
-          }
-          
-          throw new Error(`JSON parse failed in dayIndex=${dayIndex}: ${parseError.message}. Check logs for details.`);
+          throw new Error(`JSON parse failed in dayIndex=${dayIndex}: ${parseError.message}`);
         }
         
         const parsed = DayResponseSchemaCompact.safeParse(parsedJson);
         if (!parsed.success) {
-          console.error(`[MealPlanner] Zod validation error for dayIndex=${dayIndex}:`, parsed.error.message);
-          console.error(`[MealPlanner] Parsed JSON structure:`, JSON.stringify(parsedJson, null, 2));
           throw new Error(`Validación JSON falló en dayIndex=${dayIndex}: ${parsed.error.message}`);
         }
-
-        // Log para verificar si instructions está presente después de la validación
-        console.log(`[MealPlanner] Day ${dayIndex} - After Zod validation:`, JSON.stringify(parsed.data, null, 2));
-        parsed.data.meals.forEach((meal, idx) => {
-          console.log(`[MealPlanner] Day ${dayIndex} Meal ${idx} - instructions:`, meal.instructions || 'MISSING');
-        });
 
         // Guardar títulos usados
         parsed.data.meals.forEach((m) => usedTitlesThisWeek.add(m.title.toLowerCase()));
@@ -591,9 +442,6 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
           meals: parsed.data.meals,
         });
       }
-
-      // ✅ Completar ingredientes (micro-prompt barato por comida)
-      await this.ensureIngredients(days);
 
       // Notas (opcional, muy corto)
       let notes: string | undefined = undefined;
@@ -657,7 +505,6 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         `Evita títulos repetidos o muy similares a: ${avoidTitles?.slice(0, 40).join(' | ') || '(ninguno)'}`,
         `Varía estilos y combinaciones (semilla: ${seed}).`,
         'IMPORTANTE: Varía las proteínas. Rota entre: pollo, pescado, legumbres, huevos, carne roja, tofu, etc.',
-        '⚠️ OBLIGATORIO: Cada comida DEBE incluir el campo "instructions" con pasos breves de preparación.',
         this.daySchemaCompact(dayIndex),
       ].join('\n\n');
 
@@ -681,9 +528,6 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         dayIndex,
         meals: parsed.data.meals as any,
       };
-
-      // ✅ ingredientes
-      await this.ensureIngredients([day]);
 
       return { day };
     } catch (e: any) {
@@ -734,8 +578,7 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
         `Calorías objetivo entre ${kcalMin} y ${kcalMax}.`,
         `Evita títulos repetidos o muy similares a: ${avoidTitles?.slice(0, 40).join(' | ') || '(ninguno)'}`,
         `Varía estilos y combinaciones (semilla: ${seed}).`,
-        `⚠️ OBLIGATORIO: Incluye el campo "instructions" con pasos breves de preparación.`,
-        `Esquema exacto de salida (JSON): { "slot": "${target.slot}", "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number, "instructions": string }`,
+        `Esquema exacto de salida (JSON): { "slot": "${target.slot}", "title": string, "kcal": number, "protein_g": number, "carbs_g": number, "fat_g": number }`,
       ].join('\n\n');
 
       const { raw, finish } = await this.askJson({
@@ -755,12 +598,6 @@ export class OpenAIMealPlannerAgent implements MealPlannerAgentPort {
       }
 
       const meal = parsed.data as any;
-
-      // ✅ ingredientes del swap
-      meal.ingredients = await this.draftIngredientsForMeal({
-        title: meal.title,
-        slot: meal.slot,
-      });
 
       // defensa
       if (meal.slot !== target.slot) meal.slot = target.slot as any;
