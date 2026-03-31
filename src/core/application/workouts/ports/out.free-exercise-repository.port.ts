@@ -9,4 +9,5 @@ export interface FreeExerciseRepositoryPort {
     startDate: Date,
     endDate: Date,
   ): Promise<FreeExerciseLog[]>;
+  delete(id: string, userId: string): Promise<void>;
 }

@@ -40,6 +40,12 @@ export class FreeExercisePrismaRepository implements FreeExerciseRepositoryPort 
     return records.map((r) => this.toEntity(r));
   }
 
+  async delete(id: string, userId: string): Promise<void> {
+    await this.prisma.freeExerciseLog.deleteMany({
+      where: { id, userId },
+    });
+  }
+
   private toEntity(record: any): FreeExerciseLog {
     return {
       id: record.id,

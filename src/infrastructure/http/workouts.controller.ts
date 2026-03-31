@@ -7,6 +7,7 @@ import { CompleteWorkoutUseCase } from '../../core/application/workouts/use-case
 import { GetActivityStatsUseCase } from '../../core/application/workouts/use-cases/get-activity-stats.usecase';
 import { LogFreeExerciseUseCase } from '../../core/application/workouts/use-cases/log-free-exercise.usecase';
 import { GetFreeExerciseHistoryUseCase } from '../../core/application/workouts/use-cases/get-free-exercise-history.usecase';
+import { DeleteFreeExerciseUseCase } from '../../core/application/workouts/use-cases/delete-free-exercise.usecase';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GenerateWorkoutDto } from '../../core/application/workouts/dto/generate-workout.dto';
 import { CompleteWorkoutDto } from '../../core/application/workouts/dto/complete-workout.dto';
@@ -25,6 +26,7 @@ export class WorkoutsController {
     private readonly getActivityStats: GetActivityStatsUseCase,
     private readonly logFreeExercise: LogFreeExerciseUseCase,
     private readonly getFreeExerciseHistory: GetFreeExerciseHistoryUseCase,
+    private readonly deleteFreeExercise: DeleteFreeExerciseUseCase,
   ) {}
 
   @Post('generate')
@@ -128,5 +130,15 @@ export class WorkoutsController {
   ) {
     const userId = req.user.userId ?? req.user.sub;
     return this.getFreeExerciseHistory.execute(userId, query);
+  }
+
+  @Delete('free-exercise/:id')
+  async deleteFreeExerciseHandler(
+    @Param('id') id: string,
+    @Request() req: any,
+  ) {
+    const userId = req.user.userId ?? req.user.sub;
+    await this.deleteFreeExercise.execute(userId, id);
+    return { message: 'Ejercicio eliminado correctamente' };
   }
 }
