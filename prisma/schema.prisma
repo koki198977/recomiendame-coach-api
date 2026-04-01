@@ -726,3 +726,22 @@ model FreeExerciseLog {
 
   @@index([userId, date])
 }
+
+/**
+ * ===== Nutrition — Product Catalog =====
+ */
+model NutritionProduct {
+  id               String   @id @default(cuid())
+  barcode          String?  @unique
+  productName      String
+  brand            String?
+  nutritionPer100g Json
+  scores           Json     @default("{}")
+  imageUrl         String?
+  ingredients      String?
+  allergens        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([productName])
+}

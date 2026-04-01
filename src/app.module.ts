@@ -24,6 +24,7 @@ import { MediaModule } from './modules/media.module';
 import { MealsModule } from './modules/meals.module';
 import { ContactModule } from './modules/contact.module';
 import { NotificationsModule } from './modules/notifications.module';
+import { NutritionModule } from './modules/nutrition.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { NotificationsModule } from './modules/notifications.module';
     MealsModule,
     ContactModule,
     NotificationsModule,
+    NutritionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
