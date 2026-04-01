@@ -5,18 +5,12 @@ import {
   FREE_EXERCISE_REPOSITORY,
   FreeExerciseRepositoryPort,
 } from '../ports/out.free-exercise-repository.port';
-import {
-  WORKOUT_REPOSITORY,
-  WorkoutRepositoryPort,
-} from '../ports/out.workout-repository.port';
 
 @Injectable()
 export class LogFreeExerciseUseCase {
   constructor(
     @Inject(FREE_EXERCISE_REPOSITORY)
     private readonly freeExerciseRepo: FreeExerciseRepositoryPort,
-    @Inject(WORKOUT_REPOSITORY)
-    private readonly workoutRepo: WorkoutRepositoryPort,
   ) {}
 
   async execute(userId: string, dto: LogFreeExerciseDto): Promise<FreeExerciseLog> {
@@ -50,13 +44,6 @@ export class LogFreeExerciseUseCase {
     };
 
     const saved = await this.freeExerciseRepo.save(entity);
-
-    await this.workoutRepo.upsertActivity({
-      userId,
-      date,
-      minutes: dto.durationMinutes,
-      kcal: dto.caloriesBurned,
-    });
 
     return saved;
   }
