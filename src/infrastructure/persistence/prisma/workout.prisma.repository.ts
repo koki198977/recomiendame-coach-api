@@ -251,18 +251,42 @@ export class WorkoutPrismaRepository implements WorkoutRepositoryPort {
   }
 
   async getActivityStats(userId: string, startDate: Date, endDate: Date): Promise<any[]> {
-    return await this.prisma.activityLog.findMany({
-      where: {
-        userId,
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-      orderBy: {
-        date: 'asc',
-      },
-    });
+    const [activityLogs, freeExerciseLogs] = await Promise.all([
+      this.prisma.activityLog.findMany({
+        where: { userId, date: { gte: startDate, lte: endDate } },
+        orderBy: { date: 'asc' },
+      }),
+      this.prisma.freeExerciseLog.findMany({
+        where: { userId, date: { gte: startDate, lte: endDate } },
+        orderBy: { date: 'asc' },
+      }),
+    ]);
+
+    const fromActivityLogs = activityLogs.map((log) => ({
+      id: log.id,
+      date: log.date,
+      source: 'workout_plan',
+      steps: log.steps ?? null,
+      minutes: log.minutes ?? null,
+      kcal: log.kcal ?? null,
+      activityType: null,
+      distanceKm: null,
+    }));
+
+    const fromFreeExercise = freeExerciseLogs.map((log) => ({
+      id: log.id,
+      date: log.date,
+      source: 'free_exercise',
+      steps: null,
+      minutes: log.durationMinutes,
+      kcal: log.caloriesBurned,
+      activityType: log.activityType,
+      distanceKm: log.distanceKm ? Number(log.distanceKm) : null,
+    }));
+
+    return [...fromActivityLogs, ...fromFreeExercise].sort(
+      (a, b) => a.date.getTime() - b.date.getTime(),
+    );
   }
 
   private mapToDomain(raw: any): WorkoutPlan {
