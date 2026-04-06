@@ -18,6 +18,7 @@ export interface DishSuggestion {
   compatibility: string;
   ingredients_used: string[];
   steps: string[];
+  how_to_cook?: string;
   chapix_note: string;
 }
 

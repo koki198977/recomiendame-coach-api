@@ -104,6 +104,10 @@ Perfil del usuario:
 - Alergias: ${userContext.allergies ?? 'ninguna'}
 
 Sugiere exactamente 3 platos que pueda preparar con estos ingredientes.
+Para cada plato DEBES incluir:
+- "steps": array con MÍNIMO 4 pasos detallados de preparación (cómo cocinar el plato paso a paso, con tiempos y técnicas)
+- "how_to_cook": string con un resumen narrativo de la preparación completa (2-4 oraciones)
+
 Responde SOLO en JSON:
 {
   "dishes": [
@@ -113,7 +117,14 @@ Responde SOLO en JSON:
       "macros": { "kcal": 480, "protein": 42, "carbs": 35, "fat": 12 },
       "compatibility": "Perfecto para tu objetivo de ganar músculo",
       "ingredients_used": ["pollo", "brocoli", "limon"],
-      "steps": ["Cortar el pollo en trozos...", "Saltear el brócoli..."],
+      "steps": [
+        "Cortar el pollo en trozos medianos y salpimentar.",
+        "Calentar una sartén con aceite a fuego medio-alto.",
+        "Dorar el pollo 5 minutos por cada lado hasta que esté cocido.",
+        "Agregar el brócoli en floretes y saltear 3 minutos.",
+        "Exprimir el limón sobre todo y servir caliente."
+      ],
+      "how_to_cook": "Saltea el pollo en aceite caliente hasta dorarlo, luego incorpora el brócoli y termina con jugo de limón. Listo en 20 minutos.",
       "chapix_note": "Este plato te deja 320 kcal para la cena, ideal."
     }
   ]
