@@ -6,6 +6,6 @@ import { TokenSignerPort } from '../../core/application/auth/ports/out.token-sig
 export class JwtTokenAdapter implements TokenSignerPort {
   constructor(private readonly jwt: JwtService) {}
   sign(payload: any, options?: { expiresIn?: string | number }): string {
-    return this.jwt.sign(payload, options);
+    return this.jwt.sign(payload, options as any);
   }
 }

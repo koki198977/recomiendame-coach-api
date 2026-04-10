@@ -29,6 +29,9 @@ import { TranscribeAudioUseCase } from '../../core/application/meals/use-cases/t
 import { GetMealDetailsUseCase } from '../../core/application/plans/use-cases/get-meal-details.usecase';
 import { NotificationTriggersService } from '../../modules/notification-triggers.service';
 import { HealthAwareNotificationsService } from '../../modules/health-aware-notifications.service';
+import { UsageLimitService } from '../../core/application/plan/usage-limit.service';
+import { FEATURE_GATES } from '../../core/application/plan/feature-gates';
+import { ForbiddenException } from '@nestjs/common';
 
 @Controller('meals')
 @UseGuards(JwtAuthGuard)
@@ -43,6 +46,7 @@ export class MealsController {
     private readonly getMealDetails: GetMealDetailsUseCase,
     private readonly notificationTriggers: NotificationTriggersService,
     private readonly healthAwareNotifications: HealthAwareNotificationsService,
+    private readonly usageLimitService: UsageLimitService,
   ) {}
 
   @Post('log')
@@ -91,7 +95,24 @@ export class MealsController {
   @Post('analyze')
   async analyze(
     @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: AnalyzeMealDto,
+    @Request() req: any,
   ) {
+    const userId = req.user?.userId ?? req.user?.sub;
+    if (userId && req.user?.plan !== 'PRO') {
+      const gate = FEATURE_GATES['photo_meal_log'];
+      const check = await this.usageLimitService.checkAndIncrement(
+        userId, 'photo_meal_log', gate.limit!, gate.window!,
+      );
+      if (!check.allowed) {
+        throw new ForbiddenException({
+          message: `Límite de análisis de fotos alcanzado (${check.limit}/día). Resetea a las ${check.resetsAt.toISOString()}`,
+          feature: 'photo_meal_log',
+          current: check.current,
+          limit: check.limit,
+          resetsAt: check.resetsAt,
+        });
+      }
+    }
     return this.analyzeMealImage.execute(dto.imageUrl, dto.description);
   }
 

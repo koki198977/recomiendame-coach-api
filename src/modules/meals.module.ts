@@ -13,6 +13,9 @@ import { MEAL_DETAILS_AGENT } from '../core/application/plans/ports/out.meal-det
 import { MEAL_REPOSITORY } from '../core/application/plans/ports/out.meal-repository.port';
 import { PrismaModule } from '../infrastructure/database/prisma.module';
 import { NotificationsModule } from './notifications.module';
+import { UsageLimitService } from '../core/application/plan/usage-limit.service';
+import { USAGE_LOG_PORT } from '../core/application/plan/ports/out.usage-log.port';
+import { UsageLogPrismaRepository } from '../infrastructure/database/usage-log.prisma.repository';
 
 @Module({
   imports: [PrismaModule, NotificationsModule],
@@ -27,6 +30,8 @@ import { NotificationsModule } from './notifications.module';
     GetMealDetailsUseCase,
     { provide: MEAL_DETAILS_AGENT, useClass: OpenAIMealDetailsAgent },
     { provide: MEAL_REPOSITORY, useClass: PrismaMealRepository },
+    UsageLimitService,
+    { provide: USAGE_LOG_PORT, useClass: UsageLogPrismaRepository },
   ],
 })
 export class MealsModule {}

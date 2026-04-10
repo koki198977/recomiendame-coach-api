@@ -54,6 +54,11 @@ enum UserRole {
   ADMIN
 }
 
+enum UserPlan {
+  FREE
+  PRO
+}
+
 enum NutritionGoal {
   LOSE_WEIGHT
   GAIN_WEIGHT
@@ -167,6 +172,18 @@ model User {
 
   // Free Exercise Tracking
   freeExerciseLogs FreeExerciseLog[]
+
+  // Feature Gating / Plan
+  plan                 UserPlan   @default(FREE)
+  planExpiresAt        DateTime?
+  trialStartedAt       DateTime?
+  stripeCustomerId     String?    @unique
+  stripeSubscriptionId String?    @unique
+  mpPayerId            String?    @unique
+  onboardingCompleted  Boolean    @default(false)
+  onboardingStep       Int        @default(0)
+  usageLogs            UsageLog[]
+  payments             Payment[]
 }
 
 model EmailVerificationToken {
@@ -744,4 +761,48 @@ model NutritionProduct {
   updatedAt        DateTime @updatedAt
 
   @@index([productName])
+}
+
+/**
+ * ===== Feature Gating — Usage Tracking =====
+ */
+model UsageLog {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature String
+  date    DateTime @default(now())
+  count   Int      @default(1)
+
+  @@index([userId, feature, date])
+}
+
+/**
+ * ===== Payments — historial de cobros =====
+ */
+model Payment {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Proveedor
+  provider           String   // 'mercadopago' | 'stripe'
+  providerPaymentId  String?  @unique  // ID del pago en el proveedor
+  preapprovalId      String?           // ID del PreApproval/suscripción en MP
+
+  // Monto
+  amount             Int               // en centavos/unidad mínima (CLP no tiene centavos, igual guardamos entero)
+  currency           String   @default("CLP")
+
+  // Plan comprado
+  planType           String            // 'monthly' | 'annual'
+
+  // Estado
+  status             String            // 'approved' | 'pending' | 'rejected' | 'cancelled'
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId])
+  @@index([preapprovalId])
 }

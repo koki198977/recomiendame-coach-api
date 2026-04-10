@@ -26,6 +26,7 @@ import { ContactModule } from './modules/contact.module';
 import { NotificationsModule } from './modules/notifications.module';
 import { NutritionModule } from './modules/nutrition.module';
 import { IngredientScannerModule } from './modules/ingredient-scanner.module';
+import { SubscriptionsModule } from './modules/subscriptions.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { IngredientScannerModule } from './modules/ingredient-scanner.module';
     NotificationsModule,
     NutritionModule,
     IngredientScannerModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

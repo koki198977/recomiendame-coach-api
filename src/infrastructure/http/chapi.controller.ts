@@ -1,8 +1,10 @@
-import { Body, Controller, Post, Get, Request, UseGuards, Query, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Post, Get, Request, UseGuards, Query, UseInterceptors, ForbiddenException } from '@nestjs/common';
 import { ProcessEmotionalCheckinUseCase } from '../../core/application/chapi/use-cases/process-emotional-checkin.usecase';
 import { AnalyzeUserHealthUseCase } from '../../core/application/chapi/use-cases/analyze-user-health.usecase';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ChapiLegacyInterceptor } from './chapi-legacy.interceptor';
+import { UsageLimitService } from '../../core/application/plan/usage-limit.service';
+import { FEATURE_GATES } from '../../core/application/plan/feature-gates';
 
 @Controller('chapi')
 @UseGuards(JwtAuthGuard)
@@ -11,15 +13,30 @@ export class ChapiController {
   constructor(
     private readonly processCheckin: ProcessEmotionalCheckinUseCase,
     private readonly analyzeHealth: AnalyzeUserHealthUseCase,
+    private readonly usageLimitService: UsageLimitService,
   ) {}
 
   @Post('check-in')
   async checkIn(@Body() body: { message: string }, @Request() req: any) {
     const userId = req.user.userId ?? req.user.sub;
-    const result = await this.processCheckin.execute({
-      userId,
-      message: body.message,
-    });
+
+    if (req.user?.plan !== 'PRO') {
+      const gate = FEATURE_GATES['chapi_basic'];
+      const check = await this.usageLimitService.checkAndIncrement(
+        userId, 'chapi_basic', gate.limit!, gate.window!,
+      );
+      if (!check.allowed) {
+        throw new ForbiddenException({
+          message: `Límite de mensajes alcanzado (${check.limit}/día). Resetea a las ${check.resetsAt.toISOString()}`,
+          feature: 'chapi_basic',
+          current: check.current,
+          limit: check.limit,
+          resetsAt: check.resetsAt,
+        });
+      }
+    }
+
+    const result = await this.processCheckin.execute({ userId, message: body.message });
 
     if (result.ok) {
       return result.value;

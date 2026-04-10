@@ -1,8 +1,10 @@
-import { Body, Controller, Post, Get, Request, UseGuards, Query, Param } from '@nestjs/common';
+import { Body, Controller, Post, Get, Request, UseGuards, Query, Param, ForbiddenException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ChatWithChapiV2UseCase } from '../../core/application/chapi-v2/use-cases/chat-with-chapi-v2.usecase';
 import { GetConversationHistoryUseCase } from '../../core/application/chapi-v2/use-cases/get-conversation-history.usecase';
 import { GetProactiveInsightsUseCase } from '../../core/application/chapi-v2/use-cases/get-proactive-insights.usecase';
+import { UsageLimitService } from '../../core/application/plan/usage-limit.service';
+import { FEATURE_GATES } from '../../core/application/plan/feature-gates';
 
 @Controller('chapi-v2')
 @UseGuards(JwtAuthGuard)
@@ -11,6 +13,7 @@ export class ChapiV2Controller {
     private readonly chatWithChapi: ChatWithChapiV2UseCase,
     private readonly getConversationHistory: GetConversationHistoryUseCase,
     private readonly getProactiveInsights: GetProactiveInsightsUseCase,
+    private readonly usageLimitService: UsageLimitService,
   ) {}
 
   /**
@@ -23,7 +26,23 @@ export class ChapiV2Controller {
     @Request() req: any
   ) {
     const userId = req.user.userId ?? req.user.sub;
-    
+
+    if (req.user?.plan !== 'PRO') {
+      const gate = FEATURE_GATES['chapi_basic'];
+      const check = await this.usageLimitService.checkAndIncrement(
+        userId, 'chapi_basic', gate.limit!, gate.window!,
+      );
+      if (!check.allowed) {
+        throw new ForbiddenException({
+          message: `Límite de mensajes alcanzado (${check.limit}/día). Resetea a las ${check.resetsAt.toISOString()}`,
+          feature: 'chapi_basic',
+          current: check.current,
+          limit: check.limit,
+          resetsAt: check.resetsAt,
+        });
+      }
+    }
+
     const result = await this.chatWithChapi.execute({
       userId,
       message: body.message,
@@ -89,7 +108,23 @@ export class ChapiV2Controller {
   @Get('insights')
   async getInsights(@Request() req: any) {
     const userId = req.user.userId ?? req.user.sub;
-    
+
+    if (req.user?.plan !== 'PRO') {
+      const gate = FEATURE_GATES['chapi_insights'];
+      const check = await this.usageLimitService.checkAndIncrement(
+        userId, 'chapi_insights', gate.limit!, gate.window!,
+      );
+      if (!check.allowed) {
+        throw new ForbiddenException({
+          message: `Límite de insights alcanzado (${check.limit}/día). Resetea a las ${check.resetsAt.toISOString()}`,
+          feature: 'chapi_insights',
+          current: check.current,
+          limit: check.limit,
+          resetsAt: check.resetsAt,
+        });
+      }
+    }
+
     const result = await this.getProactiveInsights.execute({ userId });
 
     if (result.ok) {

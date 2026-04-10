@@ -16,6 +16,9 @@ import { GetUserFollowersUseCase } from '../core/application/users/use-cases/get
 import { GetUserFollowingUseCase } from '../core/application/users/use-cases/get-user-following.usecase';
 import { GetUserProfileUseCase } from '../core/application/users/use-cases/get-user-profile.usecase';
 import { PrismaService } from '../infrastructure/database/prisma.service';
+import { UsageLimitService } from '../core/application/plan/usage-limit.service';
+import { USAGE_LOG_PORT } from '../core/application/plan/ports/out.usage-log.port';
+import { UsageLogPrismaRepository } from '../infrastructure/database/usage-log.prisma.repository';
 import { RequestEmailVerificationUseCase } from '../core/application/auth/use-cases/request-email-verification.usecase';
 import { EMAIL_VERIF_REPO } from '../core/application/auth/ports/out.email-verification-repo.port';
 import { EmailVerificationPrismaRepository } from '../infrastructure/persistence/prisma/email-verification.prisma.repository';
@@ -81,6 +84,8 @@ const templateDir = templateDirCandidates.find((dir) => existsSync(dir)) ?? temp
     { provide: TOKEN_GENERATOR, useClass: CryptoTokenGenerator },
     PrismaService,
     ConfigService,
+    UsageLimitService,
+    { provide: USAGE_LOG_PORT, useClass: UsageLogPrismaRepository },
   ],
 })
 export class UsersModule {}

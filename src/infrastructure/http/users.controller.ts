@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -28,6 +29,10 @@ import { GetUserFollowersUseCase } from '../../core/application/users/use-cases/
 import { GetUserFollowingUseCase } from '../../core/application/users/use-cases/get-user-following.usecase';
 import { GetUserProfileUseCase } from '../../core/application/users/use-cases/get-user-profile.usecase';
 import { PrismaService } from '../database/prisma.service';
+import { UsageLimitService, computeWindowBounds } from '../../core/application/plan/usage-limit.service';
+import { UpdatePlanDto } from './dto/update-plan.dto';
+import { UpdateOnboardingDto } from './dto/update-onboarding.dto';
+import { FEATURE_GATES } from '../../core/application/plan/feature-gates';
 
 @Controller('users')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
@@ -45,6 +50,7 @@ export class UsersController {
     private readonly getUserFollowing: GetUserFollowingUseCase,
     private readonly getUserProfile: GetUserProfileUseCase,
     private readonly prisma: PrismaService,
+    private readonly usageLimitService: UsageLimitService,
   ) {}
 
   @Post()
@@ -190,5 +196,69 @@ export class UsersController {
     @Body() dto?: { confirmation?: string },
   ) {
     return this.deleteUser.execute(id, dto?.confirmation);
+  }
+
+  // PATCH /users/me/plan
+  @Patch('me/plan')
+  @UseGuards(JwtAuthGuard)
+  async updatePlan(@Req() req: any, @Body() dto: UpdatePlanDto) {
+    const userId = req.user.userId;
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        plan: dto.plan,
+        ...(dto.planExpiresAt ? { planExpiresAt: new Date(dto.planExpiresAt) } : {}),
+      },
+      select: { id: true, email: true, plan: true, planExpiresAt: true },
+    });
+  }
+
+  // PATCH /users/me/onboarding
+  @Patch('me/onboarding')
+  @UseGuards(JwtAuthGuard)
+  async updateOnboarding(@Req() req: any, @Body() dto: UpdateOnboardingDto) {
+    const userId = req.user.userId;
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { onboardingCompleted: dto.completed, onboardingStep: dto.step },
+      select: { id: true, onboardingCompleted: true, onboardingStep: true },
+    });
+  }
+
+  // GET /users/me/usage
+  @Get('me/usage')
+  @UseGuards(JwtAuthGuard)
+  async getUsage(@Req() req: any) {
+    const userId = req.user.userId;
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { plan: true },
+    });
+
+    const FREE_LIMITED_FEATURES = Object.entries(FEATURE_GATES)
+      .filter(([, cfg]) => cfg.tier === 'FREE_LIMITED')
+      .map(([key, cfg]) => ({ key, limit: cfg.limit!, window: cfg.window! }));
+
+    const features: Record<string, any> = {};
+
+    if (user?.plan === 'PRO') {
+      for (const f of FREE_LIMITED_FEATURES) {
+        features[f.key] = { current: 0, limit: null, resetsAt: null };
+      }
+      return { features };
+    }
+
+    const now = new Date();
+    for (const f of FREE_LIMITED_FEATURES) {
+      const { start, end } = computeWindowBounds(f.window, now);
+      const result = await this.prisma.usageLog.aggregate({
+        _sum: { count: true },
+        where: { userId, feature: f.key, date: { gte: start, lt: end } },
+      });
+      const current = result._sum.count ?? 0;
+      features[f.key] = { current, limit: f.limit, resetsAt: end };
+    }
+
+    return { features };
   }
 }

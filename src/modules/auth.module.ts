@@ -20,7 +20,6 @@ import { CryptoTokenGenerator } from 'src/infrastructure/security/token-generato
 import { ResetPasswordUseCase } from 'src/core/application/auth/use-cases/reset-password.usecase';
 import { EmailVerificationPrismaRepository } from 'src/infrastructure/persistence/prisma/email-verification.prisma.repository';
 import { EMAIL_VERIF_REPO } from 'src/core/application/auth/ports/out.email-verification-repo.port';
-// import { VerificationMailerAdapter } from 'src/infrastructure/mailer/verification-mailer.adapter';
 import { EmailAdapter } from 'src/infrastructure/mailer/email.adapter';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { AuthVerifyController } from 'src/infrastructure/http/auth.verify.controller';
@@ -35,6 +34,7 @@ import { AuthAccountDeletionController } from 'src/infrastructure/http/auth.acco
 import { AccountDeletionController } from 'src/infrastructure/http/account-deletion.controller';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { PrismaModule } from '../infrastructure/database/prisma.module';
 
 const templateDirCandidates = [
   join(process.cwd(), 'src', 'infrastructure', 'mailer', 'templates'),
@@ -48,8 +48,9 @@ const templateDir = templateDirCandidates.find((dir) => existsSync(dir)) ?? temp
   imports: [
     JwtModule.register({
       secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '1d' },
+      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN || '1d') as any },
     }),
+    PrismaModule,
     MailerModule.forRoot({
       transport: {
         host: process.env.MAIL_HOST,   // p.ej. smtp.gmail.com

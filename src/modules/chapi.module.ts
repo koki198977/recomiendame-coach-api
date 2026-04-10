@@ -19,6 +19,9 @@ import { PROFILE_REPO } from '../core/application/profile/ports/out.profile-repo
 import { ProfilesPrismaRepository } from '../infrastructure/persistence/prisma/profiles.prisma.repository';
 import { PrismaModule } from '../infrastructure/database/prisma.module';
 import { PrismaService } from '../infrastructure/database/prisma.service';
+import { UsageLimitService } from '../core/application/plan/usage-limit.service';
+import { USAGE_LOG_PORT } from '../core/application/plan/ports/out.usage-log.port';
+import { UsageLogPrismaRepository } from '../infrastructure/database/usage-log.prisma.repository';
 
 @Module({
   imports: [PrismaModule, ScheduleModule.forRoot()],
@@ -43,6 +46,8 @@ import { PrismaService } from '../infrastructure/database/prisma.service';
     { provide: HYDRATION_ANALYZER, useClass: HydrationAnalyzerService },
     { provide: HYDRATION_REPO, useClass: HydrationPrismaRepository },
     { provide: PROFILE_REPO, useClass: ProfilesPrismaRepository },
+    UsageLimitService,
+    { provide: USAGE_LOG_PORT, useClass: UsageLogPrismaRepository },
   ],
   exports: [],
 })

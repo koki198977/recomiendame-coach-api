@@ -42,8 +42,9 @@ services:
       API_URL: "https://api-coach.recomiendameapp.cl"
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_MODEL: "gpt-4o-mini"
-      OPENAI_TIMEOUT_MS: "80000"
-      OPENAI_MAX_TOKENS: "500"
+      OPENAI_TIMEOUT_MS: "120000"
+      OPENAI_MAX_TOKENS: "800"
+      OPENAI_MAX_TOKENS_DAY: "4000"
       OPENAI_CONCURRENCY: "4"
       OPENAI_PLAN_STYLE: "compact"
       OPENAI_LOG: "1"
@@ -57,6 +58,14 @@ services:
       # Notificaciones
       NOTIFICATIONS_ENABLED: "true"
       CRON_JOBS_ENABLED: "true"
+      # MercadoPago
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN}
+      MP_PLAN_MONTHLY_ID: ${MP_PLAN_MONTHLY_ID}
+      MP_PLAN_ANNUAL_ID: ${MP_PLAN_ANNUAL_ID}
+      MP_PLAN_MONTHLY_AMOUNT: ${MP_PLAN_MONTHLY_AMOUNT:-6990}
+      MP_PLAN_ANNUAL_AMOUNT: ${MP_PLAN_ANNUAL_AMOUNT:-4999}
+      MP_CURRENCY: ${MP_CURRENCY:-CLP}
+      MP_TEST_PAYER_EMAIL: ${MP_TEST_PAYER_EMAIL:-}
 
 volumes:
   pg_data:

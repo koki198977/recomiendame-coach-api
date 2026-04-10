@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { PrismaService } from '../infrastructure/database/prisma.service';
+import { UsageLimitService } from '../core/application/plan/usage-limit.service';
+import { USAGE_LOG_PORT } from '../core/application/plan/ports/out.usage-log.port';
+import { UsageLogPrismaRepository } from '../infrastructure/database/usage-log.prisma.repository';
 
 // Controllers
 import { ChapiV2Controller } from '../infrastructure/http/chapi-v2.controller';
@@ -42,6 +45,8 @@ import { UserProfileAggregatorPrismaRepository } from '../infrastructure/persist
       provide: USER_PROFILE_AGGREGATOR,
       useClass: UserProfileAggregatorPrismaRepository,
     },
+    UsageLimitService,
+    { provide: USAGE_LOG_PORT, useClass: UsageLogPrismaRepository },
   ],
   exports: [
     // Exportar los casos de uso por si otros módulos los necesitan

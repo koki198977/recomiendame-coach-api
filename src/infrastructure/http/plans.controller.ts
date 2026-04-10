@@ -56,7 +56,6 @@ export class PlansController {
     let fat_g = body.fat_g;
 
     if ([kcalTarget, protein_g, carbs_g, fat_g].some(v => v == null)) {
-      // calcular
       const prof = await this.profiles.get(userId);
       const calc = this.macros.compute({
         sex: prof.sex, birthDate: prof.birthDate, heightCm: prof.heightCm, weightKg: Number(prof.weightKg),
