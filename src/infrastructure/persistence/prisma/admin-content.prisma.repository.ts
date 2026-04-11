@@ -30,7 +30,7 @@ export class AdminContentPrismaRepository implements AdminContentRepositoryPort 
     const [items, total] = await Promise.all([
       this.prisma.nutritionProduct.findMany({
         where,
-        select: { id: true, barcode: true, productName: true, brand: true, allergens: true, imageUrl: true, createdAt: true },
+        select: { id: true, barcode: true, productName: true, brand: true, allergens: true, imageUrl: true, nutritionPer100g: true, createdAt: true },
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: 'desc' },

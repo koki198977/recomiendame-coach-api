@@ -5,6 +5,7 @@ export interface AdminNutritionProduct {
   brand: string | null;
   allergens: string | null;
   imageUrl: string | null;
+  nutritionPer100g: any;
   createdAt: Date;
 }
 
