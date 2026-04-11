@@ -35,6 +35,26 @@ export interface AdminUserDetail extends AdminUserSummary {
   usageByFeature: AdminUserUsage[];
 }
 
+export interface AdminUserPlan {
+  id: string;
+  weekStart: Date;
+  kcalTarget: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  notes: string | null;
+  createdAt: Date;
+}
+
+export interface AdminUserCheckin {
+  id: string;
+  date: Date;
+  weightKg: number | null;
+  adherencePct: number | null;
+  hungerLvl: number | null;
+  notes: string | null;
+}
+
 export interface AdminUserRepositoryPort {
   listUsers(params: {
     search?: string;
@@ -43,6 +63,10 @@ export interface AdminUserRepositoryPort {
   }): Promise<{ items: AdminUserSummary[]; total: number }>;
 
   getUserDetail(userId: string): Promise<AdminUserDetail | null>;
+
+  getUserPlans(userId: string): Promise<AdminUserPlan[]>;
+
+  getUserCheckins(userId: string): Promise<AdminUserCheckin[]>;
 
   deleteUser(userId: string): Promise<void>;
 

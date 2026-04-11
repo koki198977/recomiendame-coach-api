@@ -22,6 +22,8 @@ import { AdminListPaymentsUseCase } from '../../core/application/admin/use-cases
 import { AdminGetUserUsageUseCase } from '../../core/application/admin/use-cases/admin-get-user-usage.usecase';
 import { AdminGetUsageSummaryUseCase } from '../../core/application/admin/use-cases/admin-get-usage-summary.usecase';
 import { AdminGetMetricsUseCase } from '../../core/application/admin/use-cases/admin-get-metrics.usecase';
+import { AdminGetUserPlansUseCase } from '../../core/application/admin/use-cases/admin-get-user-plans.usecase';
+import { AdminGetUserCheckinsUseCase } from '../../core/application/admin/use-cases/admin-get-user-checkins.usecase';
 import { ListUsersAdminDto } from '../../core/application/admin/dto/list-users-admin.dto';
 import { ListPaymentsAdminDto } from '../../core/application/admin/dto/list-payments-admin.dto';
 import { ChangeRoleDto } from '../../core/application/admin/dto/change-role.dto';
@@ -40,6 +42,8 @@ export class AdminController {
     private readonly getUserUsageUseCase: AdminGetUserUsageUseCase,
     private readonly getUsageSummaryUseCase: AdminGetUsageSummaryUseCase,
     private readonly getMetricsUseCase: AdminGetMetricsUseCase,
+    private readonly getUserPlansUseCase: AdminGetUserPlansUseCase,
+    private readonly getUserCheckinsUseCase: AdminGetUserCheckinsUseCase,
   ) {}
 
   @Get('users')
@@ -80,5 +84,15 @@ export class AdminController {
   @Get('users/:id/usage')
   getUserUsage(@Param('id') id: string) {
     return this.getUserUsageUseCase.execute(id);
+  }
+
+  @Get('users/:id/plans')
+  getUserPlans(@Param('id') id: string) {
+    return this.getUserPlansUseCase.execute(id);
+  }
+
+  @Get('users/:id/checkins')
+  getUserCheckins(@Param('id') id: string) {
+    return this.getUserCheckinsUseCase.execute(id);
   }
 }

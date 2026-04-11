@@ -4,6 +4,8 @@ import {
   AdminUserRepositoryPort,
   AdminUserSummary,
   AdminUserDetail,
+  AdminUserPlan,
+  AdminUserCheckin,
 } from '../../../core/application/admin/ports/out.admin-user-repository.port';
 
 @Injectable()
@@ -103,6 +105,43 @@ export class AdminUserPrismaRepository implements AdminUserRepositoryPort {
         lastUsedAt: g._max.date as Date,
       })),
     };
+  }
+
+  async getUserPlans(userId: string): Promise<AdminUserPlan[]> {
+    const plans = await this.prisma.plan.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        weekStart: true,
+        kcalTarget: true,
+        protein_g: true,
+        carbs_g: true,
+        fat_g: true,
+        notes: true,
+        createdAt: true,
+      },
+      orderBy: { weekStart: 'desc' },
+    });
+    return plans;
+  }
+
+  async getUserCheckins(userId: string): Promise<AdminUserCheckin[]> {
+    const checkins = await this.prisma.checkin.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        date: true,
+        weightKg: true,
+        adherencePct: true,
+        hungerLvl: true,
+        notes: true,
+      },
+      orderBy: { date: 'desc' },
+    });
+    return checkins.map((c) => ({
+      ...c,
+      weightKg: c.weightKg ? Number(c.weightKg) : null,
+    }));
   }
 
   async deleteUser(userId: string): Promise<void> {
