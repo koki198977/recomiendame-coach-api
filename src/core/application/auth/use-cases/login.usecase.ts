@@ -15,7 +15,10 @@ export class LoginUseCase {
     @Inject(TOKEN_SIGNER) private readonly tokens: TokenSignerPort,
   ) {}
 
-  async execute(input: LoginDto): Promise<{ access_token: string }> {
+  async execute(input: LoginDto): Promise<{
+    access_token: string;
+    user: { id: string; email: string; role: string; emailVerified: boolean };
+  }> {
     const user = await this.users.findByEmail(input.email);
     if (!user) throw new UnauthorizedException('Credenciales inválidas');
 
@@ -38,6 +41,14 @@ export class LoginUseCase {
       },
       undefined,
     );
-    return { access_token };
+    return {
+      access_token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        emailVerified: user.emailVerified,
+      },
+    };
   }
 }
