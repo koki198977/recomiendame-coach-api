@@ -231,4 +231,60 @@ export class AdminController {
   listChallenges(@Query() dto: ListPostsAdminDto) {
     return this.contentUseCase.listChallenges(dto);
   }
+
+  // ── Stats — Retención ────────────────────────────────────────────────────
+
+  @Get('stats/retention')
+  getRetentionStats() {
+    return this.statsUseCase.executeRetention();
+  }
+
+  // ── Stats — Chapi ────────────────────────────────────────────────────────
+
+  @Get('stats/chapi')
+  getChapiStats() {
+    return this.statsUseCase.executeChapi();
+  }
+
+  // ── Stats — Fitness ──────────────────────────────────────────────────────
+
+  @Get('stats/fitness')
+  getFitnessStats() {
+    return this.statsUseCase.executeFitness();
+  }
+
+  // ── Stats — Nutrición ────────────────────────────────────────────────────
+
+  @Get('stats/nutrition')
+  getNutritionStats() {
+    return this.statsUseCase.executeNutrition();
+  }
+
+  // ── Stats — Bienestar ────────────────────────────────────────────────────
+
+  @Get('stats/wellness')
+  getWellnessStats() {
+    return this.statsUseCase.executeWellness();
+  }
+
+  // ── Stats — Social ───────────────────────────────────────────────────────
+
+  @Get('stats/social')
+  getSocialStats() {
+    return this.statsUseCase.executeSocial();
+  }
+
+  // ── Stats — Gamificación ─────────────────────────────────────────────────
+
+  @Get('stats/gamification')
+  getGamificationStats() {
+    return this.statsUseCase.executeGamification();
+  }
+
+  // ── Stats — Operaciones ──────────────────────────────────────────────────
+
+  @Get('stats/ops')
+  getOpsStats() {
+    return this.statsUseCase.executeOps();
+  }
 }

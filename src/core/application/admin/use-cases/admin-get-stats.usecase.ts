@@ -22,11 +22,14 @@ export class AdminGetStatsUseCase {
     return { allergies, conditions, cuisines, goals, activityLevels };
   }
 
-  async executeExtendedMetrics() {
-    return this.repo.getExtendedMetrics();
-  }
-
-  async executeUserExtra(userId: string) {
-    return this.repo.getUserDetailExtra(userId);
-  }
+  executeExtendedMetrics() { return this.repo.getExtendedMetrics(); }
+  executeUserExtra(userId: string) { return this.repo.getUserDetailExtra(userId); }
+  executeRetention() { return this.repo.getRetentionStats(); }
+  executeChapi() { return this.repo.getChapiStats(); }
+  executeFitness() { return this.repo.getFitnessStats(); }
+  executeNutrition() { return this.repo.getNutritionStats(); }
+  executeWellness() { return this.repo.getWellnessStats(); }
+  executeSocial() { return this.repo.getSocialStats(); }
+  executeGamification() { return this.repo.getGamificationStats(); }
+  executeOps() { return this.repo.getOpsStats(); }
 }
