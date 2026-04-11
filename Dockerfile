@@ -1,32 +1,43 @@
-FROM node:20-alpine
-
+# ── Stage 1: Build ──────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+RUN apk add --no-cache libc6-compat openssl
 
-# Dependencias del sistema necesarias para Prisma en Alpine y para el wait (nc)
-RUN apk add --no-cache libc6-compat openssl netcat-openbsd bash postgresql-client
-
-
-# Instala deps
 COPY package.json package-lock.json* ./
-RUN npm install --production=false
+RUN npm ci
 
-
-# Copia código y Prisma
 COPY . .
 COPY prisma ./prisma
-COPY docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh
 
-# Genera el cliente de Prisma (IMPORTANTE: antes de compilar)
 RUN npx prisma generate
 
-# Compila
 RUN npm run build
 
+# Verificar que el build produjo el archivo esperado
+RUN test -f dist/main.js || (echo "ERROR: dist/main.js no fue generado. El build falló." && exit 1)
+
+# ── Stage 2: Runtime ─────────────────────────────────────────────────────────
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache libc6-compat openssl netcat-openbsd bash postgresql-client
+
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY prisma ./prisma
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+COPY public ./public
+
+RUN chmod +x ./docker-entrypoint.sh
+
+RUN npx prisma generate
 
 EXPOSE 3000
-
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
