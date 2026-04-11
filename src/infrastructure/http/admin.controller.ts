@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Delete,
   Patch,
   Param,
@@ -10,6 +11,9 @@ import {
   UseGuards,
   UsePipes,
   ValidationPipe,
+  ParseIntPipe,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -24,9 +28,19 @@ import { AdminGetUsageSummaryUseCase } from '../../core/application/admin/use-ca
 import { AdminGetMetricsUseCase } from '../../core/application/admin/use-cases/admin-get-metrics.usecase';
 import { AdminGetUserPlansUseCase } from '../../core/application/admin/use-cases/admin-get-user-plans.usecase';
 import { AdminGetUserCheckinsUseCase } from '../../core/application/admin/use-cases/admin-get-user-checkins.usecase';
+import { AdminCatalogUseCase } from '../../core/application/admin/use-cases/admin-catalog.usecase';
+import { AdminContentUseCase } from '../../core/application/admin/use-cases/admin-content.usecase';
+import { AdminGetStatsUseCase } from '../../core/application/admin/use-cases/admin-get-stats.usecase';
 import { ListUsersAdminDto } from '../../core/application/admin/dto/list-users-admin.dto';
 import { ListPaymentsAdminDto } from '../../core/application/admin/dto/list-payments-admin.dto';
 import { ChangeRoleDto } from '../../core/application/admin/dto/change-role.dto';
+import { ListNutritionProductsDto } from '../../core/application/admin/dto/list-nutrition-products.dto';
+import { ListPostsAdminDto } from '../../core/application/admin/dto/list-posts-admin.dto';
+import {
+  CreateAllergyDto, UpdateAllergyDto,
+  CreateHealthConditionDto, UpdateHealthConditionDto,
+  CreateCuisineDto, UpdateCuisineDto,
+} from '../../core/application/admin/dto/catalog.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -44,6 +58,9 @@ export class AdminController {
     private readonly getMetricsUseCase: AdminGetMetricsUseCase,
     private readonly getUserPlansUseCase: AdminGetUserPlansUseCase,
     private readonly getUserCheckinsUseCase: AdminGetUserCheckinsUseCase,
+    private readonly catalogUseCase: AdminCatalogUseCase,
+    private readonly contentUseCase: AdminContentUseCase,
+    private readonly statsUseCase: AdminGetStatsUseCase,
   ) {}
 
   @Get('users')
@@ -94,5 +111,124 @@ export class AdminController {
   @Get('users/:id/checkins')
   getUserCheckins(@Param('id') id: string) {
     return this.getUserCheckinsUseCase.execute(id);
+  }
+
+  // ── Stats / Preferences ──────────────────────────────────────────────────
+
+  @Get('stats/preferences')
+  getPreferenceStats() {
+    return this.statsUseCase.executePreferences();
+  }
+
+  @Get('metrics/extended')
+  getExtendedMetrics() {
+    return this.statsUseCase.executeExtendedMetrics();
+  }
+
+  @Get('users/:id/extra')
+  getUserExtra(@Param('id') id: string) {
+    return this.statsUseCase.executeUserExtra(id);
+  }
+
+  // ── Catalog — Allergies ──────────────────────────────────────────────────
+
+  @Get('catalog/allergies')
+  listAllergies() {
+    return this.catalogUseCase.listAllergies();
+  }
+
+  @Post('catalog/allergies')
+  createAllergy(@Body() dto: CreateAllergyDto) {
+    return this.catalogUseCase.createAllergy(dto.name);
+  }
+
+  @Patch('catalog/allergies/:id')
+  updateAllergy(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAllergyDto) {
+    return this.catalogUseCase.updateAllergy(id, dto.name);
+  }
+
+  @Delete('catalog/allergies/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteAllergy(@Param('id', ParseIntPipe) id: number) {
+    return this.catalogUseCase.deleteAllergy(id);
+  }
+
+  // ── Catalog — Health Conditions ──────────────────────────────────────────
+
+  @Get('catalog/health-conditions')
+  listHealthConditions() {
+    return this.catalogUseCase.listHealthConditions();
+  }
+
+  @Post('catalog/health-conditions')
+  createHealthCondition(@Body() dto: CreateHealthConditionDto) {
+    return this.catalogUseCase.createHealthCondition(dto.code, dto.label);
+  }
+
+  @Patch('catalog/health-conditions/:id')
+  updateHealthCondition(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateHealthConditionDto) {
+    return this.catalogUseCase.updateHealthCondition(id, dto);
+  }
+
+  @Delete('catalog/health-conditions/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteHealthCondition(@Param('id', ParseIntPipe) id: number) {
+    return this.catalogUseCase.deleteHealthCondition(id);
+  }
+
+  // ── Catalog — Cuisines ───────────────────────────────────────────────────
+
+  @Get('catalog/cuisines')
+  listCuisines() {
+    return this.catalogUseCase.listCuisines();
+  }
+
+  @Post('catalog/cuisines')
+  createCuisine(@Body() dto: CreateCuisineDto) {
+    return this.catalogUseCase.createCuisine(dto.name);
+  }
+
+  @Patch('catalog/cuisines/:id')
+  updateCuisine(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCuisineDto) {
+    return this.catalogUseCase.updateCuisine(id, dto.name);
+  }
+
+  @Delete('catalog/cuisines/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteCuisine(@Param('id', ParseIntPipe) id: number) {
+    return this.catalogUseCase.deleteCuisine(id);
+  }
+
+  // ── Content — Nutrition Products ─────────────────────────────────────────
+
+  @Get('nutrition-products')
+  listNutritionProducts(@Query() dto: ListNutritionProductsDto) {
+    return this.contentUseCase.listNutritionProducts(dto);
+  }
+
+  @Delete('nutrition-products/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteNutritionProduct(@Param('id') id: string) {
+    return this.contentUseCase.deleteNutritionProduct(id);
+  }
+
+  // ── Content — Posts ──────────────────────────────────────────────────────
+
+  @Get('posts')
+  listPosts(@Query() dto: ListPostsAdminDto) {
+    return this.contentUseCase.listPosts(dto);
+  }
+
+  @Delete('posts/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deletePost(@Param('id') id: string) {
+    return this.contentUseCase.deletePost(id);
+  }
+
+  // ── Content — Challenges ─────────────────────────────────────────────────
+
+  @Get('challenges')
+  listChallenges(@Query() dto: ListPostsAdminDto) {
+    return this.contentUseCase.listChallenges(dto);
   }
 }

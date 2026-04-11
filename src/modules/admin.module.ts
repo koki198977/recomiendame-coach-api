@@ -10,12 +10,21 @@ import { AdminGetUsageSummaryUseCase } from '../core/application/admin/use-cases
 import { AdminGetMetricsUseCase } from '../core/application/admin/use-cases/admin-get-metrics.usecase';
 import { AdminGetUserPlansUseCase } from '../core/application/admin/use-cases/admin-get-user-plans.usecase';
 import { AdminGetUserCheckinsUseCase } from '../core/application/admin/use-cases/admin-get-user-checkins.usecase';
+import { AdminCatalogUseCase } from '../core/application/admin/use-cases/admin-catalog.usecase';
+import { AdminContentUseCase } from '../core/application/admin/use-cases/admin-content.usecase';
+import { AdminGetStatsUseCase } from '../core/application/admin/use-cases/admin-get-stats.usecase';
 import { ADMIN_USER_REPOSITORY } from '../core/application/admin/ports/out.admin-user-repository.port';
 import { ADMIN_PAYMENT_REPOSITORY } from '../core/application/admin/ports/out.admin-payment-repository.port';
 import { ADMIN_USAGE_REPOSITORY } from '../core/application/admin/ports/out.admin-usage-repository.port';
+import { ADMIN_CATALOG_REPOSITORY } from '../core/application/admin/ports/out.admin-catalog-repository.port';
+import { ADMIN_STATS_REPOSITORY } from '../core/application/admin/ports/out.admin-stats-repository.port';
+import { ADMIN_CONTENT_REPOSITORY } from '../core/application/admin/ports/out.admin-content-repository.port';
 import { AdminUserPrismaRepository } from '../infrastructure/persistence/prisma/admin-user.prisma.repository';
 import { AdminPaymentPrismaRepository } from '../infrastructure/persistence/prisma/admin-payment.prisma.repository';
 import { AdminUsagePrismaRepository } from '../infrastructure/persistence/prisma/admin-usage.prisma.repository';
+import { AdminCatalogPrismaRepository } from '../infrastructure/persistence/prisma/admin-catalog.prisma.repository';
+import { AdminStatsPrismaRepository } from '../infrastructure/persistence/prisma/admin-stats.prisma.repository';
+import { AdminContentPrismaRepository } from '../infrastructure/persistence/prisma/admin-content.prisma.repository';
 
 @Module({
   controllers: [AdminController],
@@ -30,9 +39,15 @@ import { AdminUsagePrismaRepository } from '../infrastructure/persistence/prisma
     AdminGetMetricsUseCase,
     AdminGetUserPlansUseCase,
     AdminGetUserCheckinsUseCase,
+    AdminCatalogUseCase,
+    AdminContentUseCase,
+    AdminGetStatsUseCase,
     { provide: ADMIN_USER_REPOSITORY, useClass: AdminUserPrismaRepository },
     { provide: ADMIN_PAYMENT_REPOSITORY, useClass: AdminPaymentPrismaRepository },
     { provide: ADMIN_USAGE_REPOSITORY, useClass: AdminUsagePrismaRepository },
+    { provide: ADMIN_CATALOG_REPOSITORY, useClass: AdminCatalogPrismaRepository },
+    { provide: ADMIN_STATS_REPOSITORY, useClass: AdminStatsPrismaRepository },
+    { provide: ADMIN_CONTENT_REPOSITORY, useClass: AdminContentPrismaRepository },
   ],
 })
 export class AdminModule {}
