@@ -68,5 +68,5 @@ echo "🚀 Iniciando la aplicación en modo dev (watch)..."
 exec npm run start:dev
 else
 echo "🚀 Iniciando la aplicación en modo prod..."
-exec node dist/main.js
+exec node dist/src/main.js
 fi

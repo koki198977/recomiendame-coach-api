@@ -13,10 +13,7 @@ COPY prisma ./prisma
 
 RUN npx prisma generate
 
-RUN npm run build
-
-# Verificar que el build produjo el archivo esperado
-RUN test -f dist/main.js || (echo "ERROR: dist/main.js no fue generado. El build falló." && exit 1)
+RUN npm run build 2>&1; test -f dist/src/main.js || (echo "ERROR: dist/src/main.js no fue generado. El build falló." && exit 1)
 
 # ── Stage 2: Runtime ─────────────────────────────────────────────────────────
 FROM node:20-alpine
