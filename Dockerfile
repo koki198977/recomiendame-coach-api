@@ -6,7 +6,7 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat openssl
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm install
 
 COPY . .
 COPY prisma ./prisma
@@ -26,7 +26,7 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat openssl netcat-openbsd bash postgresql-client
 
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
