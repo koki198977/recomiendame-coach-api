@@ -26,6 +26,13 @@ echo "🚀 Aplicando migraciones..."
 echo "� Resolviendo migraciones fallidas..."
 npx prisma migrate resolve --applied "20251216000001_add_hydration_goal" 2>/dev/null || true
 npx prisma migrate resolve --applied "20251226115803_add_user_push_token_model" 2>/dev/null || true
+npx prisma migrate resolve --applied "20260224000000_add_user_name_fields" 2>/dev/null || true
+npx prisma migrate resolve --applied "20260331000000_add_free_exercise_log" 2>/dev/null || true
+npx prisma migrate resolve --applied "20260401000000_add_feature_gating" 2>/dev/null || true
+npx prisma migrate resolve --applied "20260401000001_add_nutrition_product" 2>/dev/null || true
+npx prisma migrate resolve --applied "20260401000002_add_nutrition_product_fields" 2>/dev/null || true
+npx prisma migrate resolve --applied "20260409000000_add_payment_table" 2>/dev/null || true
+npx prisma migrate resolve --applied "20260409000001_add_mp_payer_id" 2>/dev/null || true
 
 if ! npx prisma migrate deploy 2>&1; then
   echo "⚠️  Error al aplicar migraciones. Haciendo baseline completo..."
